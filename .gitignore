@@ -1,0 +1,5 @@
+#Ignored Folders
+.idea
+
+#Ignored Files
+src/*.class
