@@ -7,11 +7,15 @@
 public class Encryption {
 
     // --- Encryptionion and Decryption --- //
-    public String encrypt (String message, String pubKey, String pvtKey) {
+    public String encrypt (String message, String Key) {
 
     }
+    // I don't think it's necessary to take in both public and private key for
+    // encyption and decryption. Since each only uses one. I think you should
+    // just change the inputs to message and key <--since decryption/Encryption
+    // can happen with either -- Chia
 
-    public String decrypt (String message, String pubKey, String pvtKey) {
+    public String decrypt (String message, String Key) {
 
     }
 
