@@ -17,12 +17,15 @@ public class Authentication {
     }
 
     public static boolean authenticate(String publicKey, String message) {
-        //dcmsg = decompress(message) //dcmsg = plaintext | sig
+        String dcmsg = Encryption.decompress(message); //dcmsg = plaintext | sig
+        /*debug --*/ System.out.printf("Decompressed message -> %s%n",dcmsg);
         //sig = extractSignature(dcmsg)
         //plaintext = extractPlaintext(dcmsg)
-        //oghash = decrypt(publicKey, sig)
-        //myhash = hash(plaintext)
-        //return compare(oghash, myhash)
+        String oghash = Encryption.decrypt(sig, publicKey);
+        //String myhash = hash(plaintext);
+        //return oghash.compare(myhash);
+        // /*debug --*/ System.out.printf("(original hash) %s == (calculated hash) %s%n",oghash,myhash);
+        // /*debug --*/ System.out.printf("Authentication result: %b%n", oghash.compare(myhash));
         return true; //[--temp]
     }
 
