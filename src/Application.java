@@ -72,13 +72,13 @@ public class Application {
          */
 
         Encryption en = new Encryption();
-        String encryptedM = en.encrypt("r", puKey64, prKey64);
+        String encryptedM = en.encrypt("r", puKey64);
 
         System.out.println("==========================================");
 
         // Issue is that data is too long
         // Either break up message or do something else? Hash or encrypting  wrong thing
-        String decryptedM = en.decrypt(encryptedM, puKey64, prKey64);
+        String decryptedM = en.decrypt(encryptedM, prKey64);
 
         System.out.println("Finished for today Hackerman");
 

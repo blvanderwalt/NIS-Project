@@ -28,9 +28,9 @@ public class Encryption {
     // --- Encryptionion and Decryption --- //
     /*
     RSA encryption has a very low limit for data that can be encrypted. therefore to encrypt larger sets of data
-    we use symmetric encryption, AES, for encryption - THEN we encrypt the RSA for encrypting the AES key itself
+    we use symmetric encryption, AES, for encryption - THEN we use the RSA for encrypting the AES key itself
     */
-    public String encrypt (String message, String base64PublicKey, String pvtKey) {
+    public static String encrypt (String message, String base64PublicKey) {
         PublicKey publicKey = null;
         byte[] encrypted = null;
         try {
@@ -65,7 +65,7 @@ public class Encryption {
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
-    public String decrypt (String message, String pubKey, String base64PrivateKey)  {
+    public static String decrypt (String message, String base64PrivateKey)  {
         PrivateKey privateKey = null;
         byte[] decrypted = null;
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(base64PrivateKey.getBytes()));
