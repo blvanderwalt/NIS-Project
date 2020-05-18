@@ -1,4 +1,3 @@
-
 // NIS 2020
 // Authentication Class
 // -- Performs the authentication service between the clients and server
