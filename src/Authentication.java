@@ -7,7 +7,7 @@
 public class Authentication {
 
     public String authenticate(String pvtkey) {
-
+        return "";
     }
 
 }
