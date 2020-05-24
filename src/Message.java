@@ -52,16 +52,58 @@ public class Message{
      * string constructor
      * @params fullMessage string containing a decompressed signature and payload
      */
-    public Message(String dcMessage){
+    public Message(String fullMessage){
+        sessionKeyComponent = new SessionKeyComponent();
+        signature = new Signature();
+        payload = new Payload();
         this.construct(fullMessage.getBytes());
     }
     //byte[] constructor
     public Message(byte[] fullMessage){
+        sessionKeyComponent = new SessionKeyComponent();
+        signature = new Signature();
+        payload = new Payload();
         this.construct(fullMessage);
     }
 
     private void construct(byte[] fullMessage){
-        //TODO: assigning
+        int index = fullMessage.length - 2;
+        byte[] sba = new byte[2];
+        System.arraycopy(fullMessage,index,sba,0,2);
+        short si = (short) (sba[0]<<8 | sba[1] & 0xFF);
+
+        index -= si;
+        byte[] plaintextBytes = new byte[(int)si];
+        System.arraycopy(fullMessage,index,plaintextBytes,0,si);
+        payload.plaintext = new String(plaintextBytes);
+        signature.messageDigest = Authentication.hash(payload.plaintext);
+
+        index -= 8;
+        byte[] lba = new byte[8];
+        System.arraycopy(fullMessage,index,lba,0,8);
+        payload.timestamp = bytesToLong(lba);
+
+        index -= 2;
+        System.arraycopy(fullMessage,index,sba,0,2);
+        si = (short) (sba[0]<<8 | sba[1] & 0xFF);
+
+        index -= si;
+        byte[] mdBytes = new byte[(int)si];
+        System.arraycopy(fullMessage,index,mdBytes,0,si);
+        signature.signedMD = new String(mdBytes);
+
+        index -= 394;
+        byte[] keyBytes = new byte[392];
+        System.arraycopy(fullMessage,index,keyBytes,0,392);
+        signature.senderPublicKey = new String(keyBytes);
+
+        index -= 8;
+        assert index==0;
+        System.arraycopy(fullMessage,0,lba,0,8);
+        signature.timestamp = bytesToLong(lba);
+
+        signed = (signature.signedMD.length() > 0)
+                  && !signature.signedMD.equals(new String(new byte[si]));
     }
 
     /**
@@ -72,7 +114,7 @@ public class Message{
         this.sessionKeyComponent.sessionKey = sessionKey;
         symmetric = true;
     }
-    //toByteArray
+
     //for each thing, last 2bytes says length
     //length (short si to byte[] arr): arr[0] = (byte)(si >> 8); arr[1] = (byte)si;
     /**
@@ -82,10 +124,31 @@ public class Message{
     byte[] toByteArray(){
         if(!signed) System.err.println("Message is not signed");
         if(symmetric) {}//?
-        int SIZE = 0;
-        //TODO: signature|payload > compress
 
-        return null; //[--temp]
+        //signature|payload > compress
+        byte[] md = signature.signedMD.getBytes();
+        byte[] pl = payload.plaintext.getBytes();
+
+        short si = (short)md.length;
+        byte[] mdl = new byte[]{(byte)(si >> 8), (byte)si};
+        si = (short)pl.length;
+        byte[] pll = new byte[]{(byte)(si >> 8), (byte)si};
+
+        int len = 8+392+2+md.length+2+0+8+pl.length+2;
+        byte[] output = new byte[len];
+
+        System.arraycopy(longToBytes(signature.timestamp),0,output,0,8);
+        System.arraycopy(signature.senderPublicKey.getBytes(),0,output,8,392);
+        System.arraycopy(signature.messageDigest,0,output,400,2);
+        System.arraycopy(md,0,output,402,md.length);
+        System.arraycopy(mdl,0,output,402+md.length,2);
+        System.arraycopy(longToBytes(payload.timestamp),0,output,404+md.length,8);
+        System.arraycopy(pl,0,output,412+md.length,pl.length);
+        System.arraycopy(pll,0,output,412+md.length+pl.length,2);
+
+        byte[] cp_output = Encryption.compress(new String(output));
+
+        return cp_output;
     }
     //toString
 
