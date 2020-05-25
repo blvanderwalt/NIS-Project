@@ -6,6 +6,8 @@
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
+import org.bouncycastle.cert.X509CertificateHolder;
+import java.util.Date;
 
 public class Authentication {
     private static int MESSAGE_DIGEST_SIZE = 256; //bits
@@ -40,12 +42,15 @@ public class Authentication {
         msg.signed = true;
     }
 
-    public static boolean authenticateSender(Object certificate, int nonce){
-        //nonce ? (i have no idea at all)
+    public static boolean authenticateSender(X509CertificateHolder certificate){
         //check expiry date
-        //make sure it's not on revoke list (?)
-        //
-        return true; //[--temp]
+        boolean notExpired = certificate.isValidOn(new Date(System.currentTimeMillis()));
+        //make sure it's not on revoke list
+        boolean notRevoked = true; //assumption since using fake CA
+        /*debug --*/ System.out.printf("Sender cerficate expired: %b%n",!notExpired);
+        /*debug --*/ System.out.printf("Sender certificate on revocation list: %b%n", !notRevoked);
+        /*debug --*/ System.out.printf("Authentication result: %b%n", notExpired&&notRevoked);
+        return (notExpired&&notRevoked);
     }
 
     /**
