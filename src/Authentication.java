@@ -17,7 +17,7 @@ public class Authentication {
      */
     public static String sign(String privateKey, String plaintext){
         String msghash = hash(plaintext);
-        String sig = Encryption.encrypt(privateKey, msghash);
+        String sig = null; //Encryption.encrypt(privateKey, msghash);
         /*debug --*/ System.out.printf("plaintext: %s -> signature %s%n", plaintext,sig);
         return sig;
     }
@@ -35,7 +35,7 @@ public class Authentication {
         /*debug --*/ System.out.printf("Decompressed message -> %s%n",dcmsg);
         String sig = extractSignature(dcmsg);
         String plaintext = extractPlaintext(dcmsg);
-        String oghash = Encryption.decrypt(sig, publicKey);
+        String oghash = null;//Encryption.decrypt(sig, publicKey);
         String myhash = hash(plaintext);
         /*debug --*/ System.out.printf("(original hash) %s == (calculated hash) %s%n",oghash,myhash);
         /*debug --*/ System.out.printf("Authentication result: %b%n", oghash.equals(myhash));
