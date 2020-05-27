@@ -1,57 +1,11 @@
 # NIS
 NIS Assignment
+Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
+// ------------------------------------------------------------------------- //
+Run requires 2 consoles
+Start Server --> java Server
+Start Client --> java Client [ip]
+(ip is optional - used if run on separate devices)
 
-Functions:
-
-	Make sockets (TCP)
-	
-	Encrypt with bouncy castle
-	
-	Make keys
-	
-	Make certificate
-	
-	Decrypt
-	
-	Authenticate
-	
-	
-Classes:
-
-	Server
-	
-		Keys 
-		
-		sockets
-		
-	Client
-	
-		Keys
-		
-		sockets
-		
-	Encryption
-	
-		Compression / decompression
-		
-		Encryption / decryption 
-		
-	Authentication 
-	
-	
-Work Split:
-
-	Chia - Authentication
-	
-	Ryan - Encryption
-	
-	Ceara - TCP
-	
-	Brent - Compression / Decompression
-	
-	
-Next meeting - Next Week Monday (3pm)
-
-	
-Write up - At end
+/quit to quit client
