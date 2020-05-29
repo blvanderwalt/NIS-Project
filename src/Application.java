@@ -16,54 +16,33 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
+import javax.crypto.*;
 import javax.crypto.Cipher.*;
+import javax.crypto.spec.IvParameterSpec;
 
 public class Application {
-    public static void main(String[] args) throws NoSuchAlgorithmException, KeyStoreException, IOException, UnrecoverableKeyException, CertificateException, NoSuchProviderException, InvalidKeySpecException {
-        // Check we have enough space
-        int maxKeySize = javax.crypto.Cipher.getMaxAllowedKeyLength("AES");
-        System.out.println("Max Key Size for AES : " + maxKeySize);
+    public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException, BadPaddingException, IllegalBlockSizeException {
+
+        String Message = "Try decrypt this Hackerman";
+
+        KeyGenerator k_gen = KeyGenerator.getInstance("AES");
+        k_gen.init(128); // size of AES Key - 128
+        SecretKey sKey = k_gen.generateKey();
+
+        SecureRandom random = new SecureRandom(); // generates random vector
+        byte[] init_vect = new byte[128/8]; // AES default block size = 128
+        random.nextBytes(init_vect);
+        IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
         // Generate keyPairs
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-        keyGen.initialize(2048);
+        keyGen.initialize(2048); //size of RSA key - 2048
         KeyPair pair = keyGen.generateKeyPair();
 
         PrivateKey privateKey = pair.getPrivate(); // returns PKCS#8 format
         PublicKey publicKey = pair.getPublic(); // returns X.509 format
 
-        boolean writeToFiles = false;
-        if (writeToFiles){
-            // write private key file
-            try (FileOutputStream out = new FileOutputStream("private_key" + ".key")) {
-                out.write(privateKey.getEncoded());
-                out.flush();
-            }
-            // Read private key file back
-            byte[] bytesPR = Files.readAllBytes(Paths.get("private_key.key"));
-            PKCS8EncodedKeySpec pks = new PKCS8EncodedKeySpec(bytesPR);
-            KeyFactory kfp = KeyFactory.getInstance("RSA");
-            PrivateKey pvt = kfp.generatePrivate(pks);
-
-            // write public key file
-            try (FileOutputStream out = new FileOutputStream("public_keys" + ".pub")) {
-                out.write(publicKey.getEncoded());
-                out.flush();
-            }
-            // Read public key file back
-            byte[] bytesPU = Files.readAllBytes(Paths.get("public_keys.pub"));
-            X509EncodedKeySpec xks = new X509EncodedKeySpec(bytesPU);
-            KeyFactory kfx = KeyFactory.getInstance("RSA");
-            PublicKey pub = kfx.generatePublic(xks);
-        }
-
-        // Why Base64? To Ease sharing of keys
-
-        // getEncoded = byte[]
-        String puKey64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
-        System.out.println(puKey64);
-        String prKey64 = Base64.getEncoder().encodeToString(privateKey.getEncoded());
-        System.out.println(prKey64);
+        byte[] encryptedsharedKey = Encryption.fullEncryption(sKey, init_vect, ivspec, privateKey, publicKey, Message);
 
         /* To Do:
             practice AES encryption
@@ -81,6 +60,8 @@ public class Application {
         String decryptedM = en.decrypt(encryptedM, prKey64);
 
         System.out.println("Finished for today Hackerman");
+        String[] final_message = Encryption.fullDecryption(publicKey, encryptedsharedKey, init_vect);
 
+        System.out.printf("The decrypted message: \n%s", String.join("\n", final_message));
     }
 }
