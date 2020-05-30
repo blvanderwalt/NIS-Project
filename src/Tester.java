@@ -5,9 +5,7 @@ import java.util.Arrays;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x500.X500NameBuilder;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
@@ -19,11 +17,6 @@ import java.util.Locale;
 public class Tester{
     public static void main(String[] args) {
         Authentication.hash("hello world");
-
-        X500NameBuilder issuerBuild = new X500NameBuilder(BCStyle.INSTANCE);
-        X500Name issuer = issuerBuild.build();
-        X500NameBuilder subjectBuild = new X500NameBuilder(BCStyle.INSTANCE);
-        X500Name subject = subjectBuild.build();
 
         try{
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
@@ -37,12 +30,12 @@ public class Tester{
             );
 
             X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
-                issuer, //issuer
+                new X500Name("CN=issuer"), //issuer
                 new BigInteger("3874699348568"), //serial no
                 new GregorianCalendar(2020,4,1).getTime(), //issue date
                 new GregorianCalendar(2020,8,31).getTime(), //expiry date
                 Locale.getDefault(), //date locale
-                subject, //subject
+                new X500Name("CN=subject"), //subject
                 subjectPubKeyInfo //subjects public key info: algorithm and public key
             );
             X509CertificateHolder cert = certBuild.build(
@@ -50,7 +43,7 @@ public class Tester{
             );
 
             Authentication.authenticateSender(cert);
-            
+
             String Uk = Base64.getEncoder().encodeToString(publicKey.getEncoded());
             String Rk = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 
@@ -71,7 +64,7 @@ public class Tester{
             System.out.println("decompressed: "+dcBytes);
 
             Message m2 = new Message(dcBytes);
-            System.out.println("");
+            System.out.println("symmetric: "+m2.symmetric);
             Authentication.authenticateMessage(m2);
         }
         catch (NoSuchAlgorithmException e){

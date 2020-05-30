@@ -28,6 +28,16 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+//for certificate
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.X509CertificateStructure;
+import java.math.BigInteger;
+import java.util.GregorianCalendar;
+import java.util.Locale;
 
 public class Server {
 
@@ -37,12 +47,13 @@ public class Server {
     private static String serverPvtKey = "serverPvt";
     private static String clientPubKey = "";
     private static String sharedKey = "";
+    private X509CertificateHolder clientCert;
 
     private static PrintStream defaultStream;
     private static PrintStream clientWriter;
-    
+
     private static ServerClient serverClient;
-   
+
     public static void main(String[] args) throws Exception {
         System.out.println("The chat server is running...");
         serverClient = new ServerClient(defaultStream);
@@ -85,6 +96,7 @@ public class Server {
                             clientPubKey = cpubKey;
                             serverClient.output = prt;
                             clientWriter = prt;
+                            //getClientCertificate();
                             break;
                         }
                     }
@@ -113,8 +125,12 @@ public class Server {
                     }
                     serverClient.msgField.append(clientName + " encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    // Decrypt
-                    // Decompress
+                    //TODO: decrypt [-]
+                    byte[] dcMsg; //decrypted "input"
+                    //TODO: decompress [x]
+                    String decmpMsg = Encryption.decompress(dcMsg);
+                    Message msg = new Message(decmpMsg);
+                    input = msg.payload.plaintext;
 
                     serverClient.msgField.append(clientName + " decrypted: " + input + "\n");
                 }
@@ -138,4 +154,26 @@ public class Server {
         }
 
     }
+
+    /*
+    public static void getClientCertificate(){
+        //TODO: create certificate [x]
+        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
+            new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
+            clientPubKey.getEncoded()
+        );
+        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
+            new X500Name("CN=issuer"), //issuer
+            new BigInteger("3874699348569"), //serial no
+            new GregorianCalendar(2020,4,1).getTime(), //issue date
+            new GregorianCalendar(2020,8,31).getTime(), //expiry date
+            Locale.getDefault(), //date locale
+            new X500Name("CN="+clientName), //subject
+            subjectPubKeyInfo //subject's public key info: algorithm and public key
+        );
+        clientCert = certBuild.build(
+            new Signer(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
+        );
+    }
+    */
 }
