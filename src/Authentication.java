@@ -7,6 +7,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.cert.X509CertificateHolder;
+
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Date;
 
 public class Authentication {
@@ -19,10 +23,10 @@ public class Authentication {
      * @params  plaintext   the message to be signed
      * @return  authentication signature using the private key
      */
-    public static String sign(String privateKey, String plaintext){
+    public static byte[] sign(PrivateKey privateKey, String plaintext){
         String msghash = new String(hash(plaintext));
-        String sig = Encryption.encrypt(msghash, privateKey);
-        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", plaintext,sig);
+        byte[] sig = Encryption.encrypt(msghash, privateKey);
+        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", plaintext, Arrays.toString(sig));
         return sig;
     }
 
@@ -32,12 +36,12 @@ public class Authentication {
      * @params  msg         the instance of the Message class to be signed
      * @return  authentication signature using the private key
      */
-    public static void sign(final String privateKey, Message msg){
+    public static void sign(final PrivateKey privateKey, Message msg){
         byte[] msghash = hash(msg.payload.plaintext);
-        String sig = Encryption.encrypt(new String(msghash), privateKey);
-        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
+        byte[] sig = Encryption.encrypt(new String(msghash), privateKey);
+        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext, Arrays.toString(sig));
         msg.signature.messageDigest = msghash;
-        msg.signature.signedMD = sig;
+        //msg.signature.signedMD = sig; ----------------------
         msg.signature.timestamp = System.currentTimeMillis();
         msg.signed = true;
     }
@@ -60,7 +64,7 @@ public class Authentication {
      * @params  message   byte array of the message to be authenticated
      * @return  returns true if message is authentic, false otherwise
      */
-    public static boolean authenticateMessage(String publicKey, byte [] message) {
+    public static boolean authenticateMessage(PublicKey publicKey, byte [] message) {
         /*debug --*/ System.out.printf("Compressed message: %s%n",new String(message));
         String dcmsg = Encryption.decompress(message); //dcmsg = plaintext | sig
         /*debug --*/ System.out.printf("Decompressed message -> %s%n",dcmsg);
