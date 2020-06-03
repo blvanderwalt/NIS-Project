@@ -72,7 +72,7 @@ public class Encryption {
 
         byte[] init_vec = init_vect;
         //System.out.println(Arrays.toString(init_vect));
-        out.write(init_vect); // write init_vector to file
+        out.write(init_vect); // write init_vgector to file
 
         // Encrypt File content using AES key
         Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
