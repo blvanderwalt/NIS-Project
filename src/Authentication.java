@@ -14,6 +14,19 @@ public class Authentication {
     private static int PUBLIC_KEY_SIZE = 3136; //bits
 
     /**
+     * signs the input plaintext, using the provided private key
+     * @params  privateKey  the private key used for the signature
+     * @params  plaintext   the message to be signed
+     * @return  authentication signature using the private key
+     */
+    public static String sign(String privateKey, String plaintext){
+        String msghash = new String(hash(plaintext));
+        String sig = Encryption.encrypt(msghash, privateKey);
+        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", plaintext,sig);
+        return sig;
+    }
+
+    /**
      * digitally signs the input message
      * @params  privateKey  the private key used for the signature
      * @params  msg         the instance of the Message class to be signed
@@ -21,7 +34,7 @@ public class Authentication {
      */
     public static void sign(final String privateKey, Message msg){
         byte[] msghash = hash(msg.payload.plaintext);
-        String sig = Encryption.encrypt(msghash, privateKey);
+        String sig = Encryption.encrypt(new String(msghash), privateKey);
         /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
         msg.signature.messageDigest = msghash;
         msg.signature.signedMD = sig;
@@ -38,6 +51,26 @@ public class Authentication {
         /*debug --*/ System.out.printf("Sender certificate on revocation list: %b%n", !notRevoked);
         /*debug --*/ System.out.printf("Authentication result: %b%n", notExpired&&notRevoked);
         return (notExpired&&notRevoked);
+    }
+
+    /**
+     * Assumes the sender has been autheticated and authenticates only the
+     * validity of the input message.
+     * @params  publicKey public key of the sender
+     * @params  message   byte array of the message to be authenticated
+     * @return  returns true if message is authentic, false otherwise
+     */
+    public static boolean authenticateMessage(String publicKey, byte [] message) {
+        /*debug --*/ System.out.printf("Compressed message: %s%n",new String(message));
+        String dcmsg = Encryption.decompress(message); //dcmsg = plaintext | sig
+        /*debug --*/ System.out.printf("Decompressed message -> %s%n",dcmsg);
+        String sig = extractSignature(dcmsg);
+        String plaintext = extractPlaintext(dcmsg);
+        String oghash = Encryption.decrypt(sig, publicKey);
+        String myhash = new String(hash(plaintext));
+        /*debug --*/ System.out.printf("(original hash) %s == (calculated hash) %s%n",oghash,myhash);
+        /*debug --*/ System.out.printf("Authentication result: %b%n", oghash.equals(myhash));
+        return oghash.equals(myhash);
     }
 
     /**
@@ -78,4 +111,27 @@ public class Authentication {
         return null;
     }
 
+    public static String extractPlaintext(final String message){
+        // last 2 bytes says plaintext message size
+        byte[] msg = message.getBytes();
+        int fullsize = msg.length;
+        short size = (short) (msg[fullsize-2]<<8 | msg[fullsize-1] & 0xFF);
+        /*debug --*/ System.out.printf("Full message length: %d%n",fullsize);
+        /*debug --*/ System.out.printf("Plaintext message length: %d%n",size);
+        String plaintext = message.substring(message.length()-2 - size, message.length()-2);
+        /*debug --*/ System.out.printf("Extracted plaintext: %s%n",plaintext);
+        return plaintext;
+    }
+
+    public static String extractSignature(final String message){
+        // as above
+        byte[] msg = message.getBytes();
+        int fullsize = msg.length;
+        short size = (short) (msg[fullsize-2]<<8 | msg[fullsize-1] & 0xFF);
+        /*debug --*/ System.out.printf("Full message length: %d%n",fullsize);
+        /*debug --*/ System.out.printf("Plaintext message length: %d%n",size);
+        String signature = message.substring(0, message.length()-2 - size);
+        /*debug --*/ System.out.printf("Extracted signature: %s%n",signature);
+        return signature;
+    }
 }
