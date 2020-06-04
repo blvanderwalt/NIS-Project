@@ -25,12 +25,12 @@ public class Encryption {
      * Take in the message hash and private key
      * @return String signature
     */
-    public static byte[] encrypt (String msghash, PrivateKey privateKey) {
+    public static byte[] encrypt (byte[] msghash, PrivateKey privateKey) {
         byte[] signed_hash = null;
         try {
             Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             cipher.init(Cipher.ENCRYPT_MODE, privateKey);
-            signed_hash = cipher.doFinal(msghash.getBytes());
+            signed_hash = cipher.doFinal(msghash);
         }catch(NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e){
             e.printStackTrace();
         }
