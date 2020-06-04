@@ -44,11 +44,8 @@ public class ServerClient {
                 String msg = txtEnter.getText();
                 msgField.append(serverName + ": " + msg + "\n");
                 // --- Compress & Encrypt --- //
-                //TODO: compress [-] ~ needs both public keys + server private key
-                Message message = new Message(msg,pubKey,clientPubKey);
-                Authentication.sign(pvtKey,message);
-                byte[] msgBytes = message.toByteArray();
-                //TODO: encrypt [-]
+                //Compress
+                //Encrypt
 
                 output.println("MESSAGE " + msg + "\n");
                 txtEnter.setText("");
@@ -60,3 +57,5 @@ public class ServerClient {
 
 
 }
+
+

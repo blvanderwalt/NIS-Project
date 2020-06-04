@@ -5,6 +5,7 @@
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.cert.X509CertificateHolder;
 import java.util.Date;
@@ -14,14 +15,28 @@ public class Authentication {
     private static int PUBLIC_KEY_SIZE = 3136; //bits
 
     /**
-     * digitally signs the input message
+     * signs the input plaintext, using the provided private key
      * @params  privateKey  the private key used for the signature
-     * @params  msg         the instance of the Message class to be signed
+     * @params  plaintext   the message to be signed
      * @return  authentication signature using the private key
      */
-    public static void sign(final String privateKey, Message msg){
-        byte[] msghash = hash(msg.payload.plaintext);
+    public static String sign(String privateKey, String plaintext){
+        String msghash = new String(hash(plaintext));
         String sig = Encryption.encrypt(msghash, privateKey);
+        /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", plaintext,sig);
+        return sig;
+    }
+
+    /**
+     * digitally signs the input message
+     * @param  privateKey  the private key used for the signature
+     * @param  msg         the instance of the Message class to be signed
+     * @return  authentication signature using the private key
+     */
+    public static void sign(final PrivateKey privateKey, Message msg){
+        byte[] msghash = hash(msg.payload.plaintext);
+        byte[] sig = Encryption.encrypt(msghash, privateKey);
+
         /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
         msg.signature.messageDigest = msghash;
         msg.signature.signedMD = sig;
@@ -43,7 +58,7 @@ public class Authentication {
     /**
      * Assumes the sender has been autheticated and authenticates only the
      * validity of the input message.
-     * @params msg  the instance of the Message class to be authenticated
+     * @param msg  the instance of the Message class to be authenticated
      * @return  returns true if message is authentic, false otherwise
      */
     public static boolean authenticateMessage(Message msg) {
@@ -58,7 +73,7 @@ public class Authentication {
     /**
      * creates a 256 bit message digest ("hash") of plaintext using SHA-256
      * algorithm.
-     * @params  plaintext   plaintext to be hashed
+     * @param  plaintext   plaintext to be hashed
      * @return  returns a 256 bit hash of the plain text provided
      * @exception NoSuchAlgorithmException on hashing algorithm
      */
@@ -78,4 +93,27 @@ public class Authentication {
         return null;
     }
 
+    public static String extractPlaintext(final String message){
+        // last 2 bytes says plaintext message size
+        byte[] msg = message.getBytes();
+        int fullsize = msg.length;
+        short size = (short) (msg[fullsize-2]<<8 | msg[fullsize-1] & 0xFF);
+        /*debug --*/ System.out.printf("Full message length: %d%n",fullsize);
+        /*debug --*/ System.out.printf("Plaintext message length: %d%n",size);
+        String plaintext = message.substring(message.length()-2 - size, message.length()-2);
+        /*debug --*/ System.out.printf("Extracted plaintext: %s%n",plaintext);
+        return plaintext;
+    }
+
+    public static String extractSignature(final String message){
+        // as above
+        byte[] msg = message.getBytes();
+        int fullsize = msg.length;
+        short size = (short) (msg[fullsize-2]<<8 | msg[fullsize-1] & 0xFF);
+        /*debug --*/ System.out.printf("Full message length: %d%n",fullsize);
+        /*debug --*/ System.out.printf("Plaintext message length: %d%n",size);
+        String signature = message.substring(0, message.length()-2 - size);
+        /*debug --*/ System.out.printf("Extracted signature: %s%n",signature);
+        return signature;
+    }
 }

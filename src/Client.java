@@ -29,24 +29,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.util.concurrent.TimeUnit;
-//for certificate
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.bouncycastle.asn1.x509.X509CertificateStructure;
-import java.math.BigInteger;
-import java.util.GregorianCalendar;
-import java.util.Locale;
-
 
 public class Client {
     private String pubKey;
     private String pvtKey;
     String serverName;
     String serverPubKey;
-    X509CertificateHolder serverCert;
 
     String clientName = "Client";
     String sharedKey;
@@ -66,37 +54,14 @@ public class Client {
         UI.getContentPane().add(new JScrollPane(msgField), BorderLayout.CENTER);
         UI.pack();
 
-        // --- generate public/private key pair --- //
-        //TODO: assign pubKey and pvtKey [-]
-        //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
-        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
-            new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-            serverPubKey.getEncoded() 
-        );
-        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
-            new X500Name("CN=issuer"), //issuer
-            new BigInteger("3874699348568"), //serial no
-            new GregorianCalendar(2020,4,1).getTime(), //issue date
-            new GregorianCalendar(2020,8,31).getTime(), //expiry date
-            Locale.getDefault(), //date locale
-            new X500Name("CN=server"), //subject
-            subjectPubKeyInfo //subject's public key info: algorithm and public key
-        );
-        serverCert = certBuild.build(
-            new Signer(subjectPubKeyInfo.getAlgorithm(), serverPubKey.getEncoded())
-        );
-
         // --- Send message and print it on screen --- //
         txtEnter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = txtEnter.getText();
                 msgField.append(clientName + ": " + msg + "\n");
-
                 // --- Compress & Encrypt --- //
-                Message message = new Message(msg,pubKey,serverPubKey);
-                Authentication.sign(pvtKey,message);
-                byte[] msgBytes = message.toByteArray();
-                //TODO: encrypt msgBytes [-]
+                // Compress
+                // Encrypt
 
                 output.println(msg);
                 txtEnter.setText("");
@@ -123,8 +88,7 @@ public class Client {
                     serverPubKey = namePubKey [1];
                     boolean authenticate = true;
                     // --- Authenticate Server --- //
-                    // TODO: authentication [x]
-                    authenticate = Authentication.authenticateSender(serverCert);
+                    // authentication
 
                     if (authenticate) {
                         output.println("accepted");
@@ -144,25 +108,18 @@ public class Client {
                         catch (Exception e) {
                            return;
                         }
-
-
+                        
+                        
                     }
-
+                    
                 } else if (line.startsWith("MESSAGE")) {
                     String encryptedMessage = line.substring(8);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
-                    //TODO: decryption [-]
-                    byte[] dcMsg; //decrypted but still compressed message
-                    //TODO: decompress [x]
-                    String decmpMsg = Encryption.decompress(dcMsg);
-                    Message msg = new Message(decmpMsg);
+                    //Decrypt Message
+                    //Decompress Message
 
-                    // --- Authenticate Message --- //
-                    //TODO: authentication [-]
-                    Authentication.authenticateMessage(msg);
-
-                    String decryptedMessage = msg.payload.plaintext;
+                    String decryptedMessage = encryptedMessage;
                     msgField.append("Server decrypted: " + decryptedMessage + "\n");
                 }
             }
