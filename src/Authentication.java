@@ -5,6 +5,7 @@
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.cert.X509CertificateHolder;
 import java.util.Date;
@@ -28,13 +29,14 @@ public class Authentication {
 
     /**
      * digitally signs the input message
-     * @params  privateKey  the private key used for the signature
-     * @params  msg         the instance of the Message class to be signed
+     * @param  privateKey  the private key used for the signature
+     * @param  msg         the instance of the Message class to be signed
      * @return  authentication signature using the private key
      */
-    public static void sign(final String privateKey, Message msg){
+    public static void sign(final PrivateKey privateKey, Message msg){
         byte[] msghash = hash(msg.payload.plaintext);
-        String sig = Encryption.encrypt(new String(msghash), privateKey);
+        byte[] sig = Encryption.encrypt(msghash, privateKey);
+
         /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
         msg.signature.messageDigest = msghash;
         msg.signature.signedMD = sig;
@@ -56,27 +58,7 @@ public class Authentication {
     /**
      * Assumes the sender has been autheticated and authenticates only the
      * validity of the input message.
-     * @params  publicKey public key of the sender
-     * @params  message   byte array of the message to be authenticated
-     * @return  returns true if message is authentic, false otherwise
-     */
-    public static boolean authenticateMessage(String publicKey, byte [] message) {
-        /*debug --*/ System.out.printf("Compressed message: %s%n",new String(message));
-        String dcmsg = Encryption.decompress(message); //dcmsg = plaintext | sig
-        /*debug --*/ System.out.printf("Decompressed message -> %s%n",dcmsg);
-        String sig = extractSignature(dcmsg);
-        String plaintext = extractPlaintext(dcmsg);
-        String oghash = Encryption.decrypt(sig, publicKey);
-        String myhash = new String(hash(plaintext));
-        /*debug --*/ System.out.printf("(original hash) %s == (calculated hash) %s%n",oghash,myhash);
-        /*debug --*/ System.out.printf("Authentication result: %b%n", oghash.equals(myhash));
-        return oghash.equals(myhash);
-    }
-
-    /**
-     * Assumes the sender has been autheticated and authenticates only the
-     * validity of the input message.
-     * @params msg  the instance of the Message class to be authenticated
+     * @param msg  the instance of the Message class to be authenticated
      * @return  returns true if message is authentic, false otherwise
      */
     public static boolean authenticateMessage(Message msg) {
@@ -91,7 +73,7 @@ public class Authentication {
     /**
      * creates a 256 bit message digest ("hash") of plaintext using SHA-256
      * algorithm.
-     * @params  plaintext   plaintext to be hashed
+     * @param  plaintext   plaintext to be hashed
      * @return  returns a 256 bit hash of the plain text provided
      * @exception NoSuchAlgorithmException on hashing algorithm
      */
