@@ -3,8 +3,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Scanner;
 import java.awt.BorderLayout;
+import javax.crypto.SecretKey;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -13,11 +16,10 @@ import javax.swing.JTextField;
 
  // --- Server Client deals with input on the server side --- //
 public class ServerClient {
-    String serverName = "Server";
-    String sharedKey;
-    String serverUKey;
-    String serverRKey;
-    String clientUKey;
+    SecretKey sharedKey;
+    PublicKey serverUKey;
+    PrivateKey serverRKey;
+    PublicKey clientUKey;
 
     Scanner input;
     ObjectOutputStream output;
@@ -40,7 +42,7 @@ public class ServerClient {
         txtEnter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = txtEnter.getText();
-                msgField.append(serverName + ": " + msg + "\n");
+                msgField.append("server: " + msg + "\n");
                 // --- Compress & Encrypt --- //
                 Message message = new Message(msg,serverUKey,clientUKey);
                 Authentication.sign(serverRKey,message);

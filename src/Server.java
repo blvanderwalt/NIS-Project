@@ -16,6 +16,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Set;
@@ -24,6 +26,7 @@ import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.awt.BorderLayout;
+import javax.crypto.SecretKey;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -44,12 +47,10 @@ import java.util.Locale;
 
 public class Server {
 
-    private static String clientName = "";
-    private static String serverName = "Server";
-    private static String serverPubKey = "serverPub";
-    private static String serverPvtKey = "serverPvt";
-    private static String clientPubKey = "";
-    private static String sharedKey = "";
+    private static PublicKey serverPubKey;
+    private static PrivateKey serverPvtKey;
+    private static PublicKey clientPubKey;
+    private static SecretKey sharedKey;
     private X509CertificateHolder clientCert;
     private static X509CertificateHolder serverCert;
 
@@ -71,7 +72,6 @@ public class Server {
     }
 
     private static class Handler implements Runnable {
-        private String name;
         private Socket socket;
         private ObjectInputStream in;
 
@@ -88,16 +88,10 @@ public class Server {
                 // Keep requesting a name until we get a unique one.
                 while (true) {
                     prt.writeObject("SUBMITNAME");
-                    String [] namePubKey = ((String)in.readObject()).split("#");;
-                    name = namePubKey [0];
-                    String cpubKey = namePubKey [1];
-                    if (name == null) {
-                        return;
-                    }
-                    synchronized (clientName) {
-                        if (!name.equals("") && clientName.equals("")) {
-                            clientName = name;
-                            clientPubKey = cpubKey;
+                    PublicKey cPubKey = (PublicKey)in.readObject();
+                    synchronized (clientPubKey) {
+                        if (!cPubKey.equals(null) && clientPubKey.equals(null)) {
+                            clientPubKey = cPubKey;
                             serverClient.output = prt;
                             clientWriter = prt;
                             serverClient.clientUKey = clientPubKey;
@@ -117,7 +111,8 @@ public class Server {
                     return;
                 }
                 //Send Public key to client and await their verification
-                clientWriter.writeObject("NAMEACCEPTED " + serverName + "#" + serverPubKey);
+                clientWriter.writeObject("NAMEACCEPTED");
+                clientWriter.writeObject(serverPubKey);
                 clientWriter.writeObject(serverCert);
                 String clientAccept =  (String)in.readObject();
                 if (clientAccept.equals("declined")) {
@@ -125,12 +120,12 @@ public class Server {
                 }
 
                 // get shared key
-                sharedKey = "shared";
+                //create new shared key;
                 clientWriter.writeObject(sharedKey);
                 serverClient.sharedKey = sharedKey;
 
                 // --- Show authentication complete --- //
-                serverClient.msgField.append(clientName + " has joined the chat." + "\n");
+                serverClient.msgField.append("Client has joined the chat.\n");
                 serverClient.txtEnter.setEditable(true);
 
                 // --- Read messages from client --- //
@@ -139,14 +134,14 @@ public class Server {
                     if (input.payload.plaintext.startsWith("/quit")) {
                         return;
                     }
-                    serverClient.msgField.append(clientName + " encrypted: " + input + "\n");
+                    serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
                     //TODO: decrypt [-]
                     byte[] dcMsg; //decrypted "input"
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
                     if (Authentication.authenticateMessage(msg)){
-                        serverClient.msgField.append(clientName + " decrypted: " + decmpMsg + "\n");
+                        serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
                     }
                     else {
                         serverClient.msgField.append("Message Authentication failed");
@@ -161,10 +156,9 @@ public class Server {
                 if (clientWriter != null) {
                     clientWriter = null;
                 }
-                if (clientName != null || clientName != "") {
-                    System.out.println(clientName + " is leaving");
-                    clientName = "";
-                    clientPubKey = "";
+                if (clientPubKey != null) {
+                    System.out.println("Client is leaving");
+                    clientPubKey = null;
                 }
                 try {
                     socket.close();

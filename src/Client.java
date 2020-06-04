@@ -16,6 +16,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -25,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
+import javax.crypto.SecretKey;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -44,14 +47,12 @@ import java.util.Locale;
 
 
 public class Client {
-    private String clientPubKey;
-    private String clientPvtKey;
-    String serverName;
-    String serverPubKey;
+    private PublicKey clientPubKey;
+    private PrivateKey clientPvtKey;
+    PublicKey serverPubKey;
     X509CertificateHolder serverCert;
     X509CertificateHolder clientCert;
-    String clientName = "Client";
-    String sharedKey;
+    private SecretKey sharedKey;
     String serverAddress;
     ObjectInputStream input;
     ObjectOutputStream output;
@@ -92,7 +93,7 @@ public class Client {
         txtEnter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = txtEnter.getText();
-                msgField.append(clientName + ": " + msg + "\n");
+                msgField.append("Client: " + msg + "\n");
 
                 // --- Compress & Encrypt --- //
                 Message message = new Message(msg,clientPubKey,serverPubKey);
@@ -124,7 +125,7 @@ public class Client {
                     String line = (String)obj;
                     if (line.startsWith("SUBMITNAME")) {
                         //Send public Key
-                        output.writeObject(clientName + "#" + clientPubKey);
+                        output.writeObject(clientPubKey);
                     }
 
                     line = (String)input.readObject();
@@ -132,20 +133,17 @@ public class Client {
                         output.writeObject(clientCert);
                     }
                     if (line.startsWith("NAMEACCEPTED")) {
-                        this.UI.setTitle("Encrypto - " + clientName);
-                        msgField.append("Joined chat with Server\n");
-                        txtEnter.setEditable(true);
-                        String[] namePubKey = line.split("#");
-                        serverName = namePubKey[0];
-                        serverPubKey = namePubKey[1];
+                        this.UI.setTitle("Encrypto - Client");
+                        serverPubKey = (PublicKey)input.readObject();
                         X509CertificateHolder servCert = (X509CertificateHolder)input.readObject();
                         boolean authenticate = true;
                         // --- Authenticate Server --- //
                         authenticate = Authentication.authenticateSender(servCert);
-
                         if (authenticate) {
                             output.writeObject("accepted");
-                            sharedKey = (String)input.readObject();
+                            sharedKey = (SecretKey) input.readObject();
+                            msgField.append("Joined chat with Server\n");
+                            txtEnter.setEditable(true);
                         }
                         else {
                             output.writeObject("declined");
