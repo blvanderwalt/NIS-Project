@@ -34,17 +34,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.util.concurrent.TimeUnit;
-//for certificate
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.X509CertificateHolder;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
-import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
-import org.bouncycastle.asn1.x509.X509CertificateStructure;
-import java.math.BigInteger;
-import java.util.GregorianCalendar;
-import java.util.Locale;
-
 
 public class Client {
     private PublicKey clientPubKey;
@@ -74,7 +63,7 @@ public class Client {
         //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
         SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
             new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-            serverPubKey.getEncoded() 
+            serverPubKey.getEncoded()
         );
         X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
             new X500Name("CN=issuer"), //issuer

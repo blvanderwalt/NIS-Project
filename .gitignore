@@ -3,3 +3,6 @@
 
 #Ignored Files
 src/*.class
+*.class
+*.class
+NIS-Prac.iml
