@@ -16,8 +16,8 @@ public class Authentication {
 
     /**
      * digitally signs the input message
-     * @params  privateKey  the private key used for the signature
-     * @params  msg         the instance of the Message class to be signed
+     * @param  privateKey  the private key used for the signature
+     * @param  msg         the instance of the Message class to be signed
      * @return  authentication signature using the private key
      */
     public static void sign(final PrivateKey privateKey, Message msg){
@@ -44,7 +44,7 @@ public class Authentication {
     /**
      * Assumes the sender has been autheticated and authenticates only the
      * validity of the input message.
-     * @params msg  the instance of the Message class to be authenticated
+     * @param msg  the instance of the Message class to be authenticated
      * @return  returns true if message is authentic, false otherwise
      */
     public static boolean authenticateMessage(Message msg) {
@@ -59,7 +59,7 @@ public class Authentication {
     /**
      * creates a 256 bit message digest ("hash") of plaintext using SHA-256
      * algorithm.
-     * @params  plaintext   plaintext to be hashed
+     * @param  plaintext   plaintext to be hashed
      * @return  returns a 256 bit hash of the plain text provided
      * @exception NoSuchAlgorithmException on hashing algorithm
      */
