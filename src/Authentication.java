@@ -5,6 +5,7 @@
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.*;
 import java.nio.charset.StandardCharsets;
 import org.bouncycastle.cert.X509CertificateHolder;
 import java.util.Date;
@@ -19,9 +20,9 @@ public class Authentication {
      * @params  msg         the instance of the Message class to be signed
      * @return  authentication signature using the private key
      */
-    public static void sign(final String privateKey, Message msg){
+    public static void sign(final PrivateKey privateKey, Message msg){
         byte[] msghash = hash(msg.payload.plaintext);
-        String sig = Encryption.encrypt(msghash, privateKey);
+        byte[] sig = Encryption.encrypt(msghash, privateKey);
         /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
         msg.signature.messageDigest = msghash;
         msg.signature.signedMD = sig;
