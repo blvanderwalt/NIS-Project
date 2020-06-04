@@ -16,7 +16,7 @@ public class Message{
         long timestamp;
         String senderPublicKey;
         byte[] messageDigest;
-        String signedMD;
+        byte[] signedMD;
     }
     //--> payload
     protected class Payload{
@@ -88,9 +88,8 @@ public class Message{
         si = (short) (sba[0]<<8 | sba[1] & 0xFF);
 
         index -= si;
-        byte[] mdBytes = new byte[(int)si];
-        System.arraycopy(fullMessage,index,mdBytes,0,si);
-        signature.signedMD = new String(mdBytes);
+        signature.signedMD = new byte[(int)si];
+        System.arraycopy(fullMessage,index,signature.signedMD,0,si);
 
         index -= 394;
         byte[] keyBytes = new byte[392];
@@ -102,8 +101,8 @@ public class Message{
         System.arraycopy(fullMessage,0,lba,0,8);
         signature.timestamp = bytesToLong(lba);
 
-        signed = (signature.signedMD.length() > 0)
-                  && !signature.signedMD.equals(new String(new byte[si]));
+        signed = (signature.signedMD.length > 0)
+                  && !signature.signedMD.equals(new byte[si]);
     }
 
     /**
@@ -126,25 +125,24 @@ public class Message{
         if(symmetric) {}//?
 
         //signature|payload > compress
-        byte[] md = signature.signedMD.getBytes();
         byte[] pl = payload.plaintext.getBytes();
 
-        short si = (short)md.length;
+        short si = (short)signature.signedMD.length;
         byte[] mdl = new byte[]{(byte)(si >> 8), (byte)si};
         si = (short)pl.length;
         byte[] pll = new byte[]{(byte)(si >> 8), (byte)si};
 
-        int len = 8+392+2+md.length+2+0+8+pl.length+2;
+        int len = 8+392+2+signature.signedMD.length+2+0+8+pl.length+2;
         byte[] output = new byte[len];
 
         System.arraycopy(longToBytes(signature.timestamp),0,output,0,8);
         System.arraycopy(signature.senderPublicKey.getBytes(),0,output,8,392);
         System.arraycopy(signature.messageDigest,0,output,400,2);
-        System.arraycopy(md,0,output,402,md.length);
-        System.arraycopy(mdl,0,output,402+md.length,2);
-        System.arraycopy(longToBytes(payload.timestamp),0,output,404+md.length,8);
-        System.arraycopy(pl,0,output,412+md.length,pl.length);
-        System.arraycopy(pll,0,output,412+md.length+pl.length,2);
+        System.arraycopy(signature.signedMD,0,output,402,signature.signedMD.length);
+        System.arraycopy(mdl,0,output,402+signature.signedMD.length,2);
+        System.arraycopy(longToBytes(payload.timestamp),0,output,404+signature.signedMD.length,8);
+        System.arraycopy(pl,0,output,412+signature.signedMD.length,pl.length);
+        System.arraycopy(pll,0,output,412+signature.signedMD.length+pl.length,2);
 
         byte[] cp_output = Encryption.compress(new String(output));
 
