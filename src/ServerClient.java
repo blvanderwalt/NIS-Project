@@ -44,6 +44,7 @@ public class ServerClient {
                 String msg = txtEnter.getText();
                 msgField.append("server: " + msg + "\n");
                 // --- Compress & Encrypt --- //
+
                 Message message = new Message(msg,serverUKey,clientUKey);
                 Authentication.sign(serverRKey,message);
                 byte[] msgBytes = message.toByteArray();

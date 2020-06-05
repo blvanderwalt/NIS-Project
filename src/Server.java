@@ -34,6 +34,16 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+//for certificate
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.X509CertificateStructure;
+import java.math.BigInteger;
+import java.util.GregorianCalendar;
+import java.util.Locale;
 
 public class Server {
 
