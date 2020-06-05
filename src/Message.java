@@ -4,19 +4,22 @@
 //Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
 import java.util.Arrays;
+import java.security.*;
+import java.security.spec.X509EncodedKeySpec; 
+import java.security.spec.InvalidKeySpecException;
 
 public class Message{
     //fields (public for now) !!![final? immutable]!!!
     //--> header
     protected class SessionKeyComponent{
-        String recipientPublicKey;
-        String sessionKey; //idk if we use this
+        PublicKey recipientPublicKey;
+        byte[] sessionKey; //idk if we use this
     }
     protected class Signature{
         long timestamp;
-        String senderPublicKey;
+        PublicKey senderPublicKey;
         byte[] messageDigest;
-        String signedMD;
+        byte[] signedMD;
     }
     //--> payload
     protected class Payload{
@@ -39,7 +42,7 @@ public class Message{
      * @params plaintext        payload plaintext of pgp message
      * @params senderPublicKey  public key of the sending party
      */
-    public Message(String plaintext, String senderPublicKey, String recipientPublicKey){
+    public Message(String plaintext, PublicKey senderPublicKey, PublicKey recipientPublicKey){
         sessionKeyComponent = new SessionKeyComponent();
         signature = new Signature();
         payload = new Payload();
@@ -66,7 +69,7 @@ public class Message{
         this.construct(fullMessage);
     }
 
-    private void construct(byte[] fullMessage){
+    private void construct(byte[] fullMessage) throws InvalidKeySpecException, NoSuchAlgorithmException{
         int index = fullMessage.length - 2;
         byte[] sba = new byte[2];
         System.arraycopy(fullMessage,index,sba,0,2);
@@ -88,29 +91,28 @@ public class Message{
         si = (short) (sba[0]<<8 | sba[1] & 0xFF);
 
         index -= si;
-        byte[] mdBytes = new byte[(int)si];
-        System.arraycopy(fullMessage,index,mdBytes,0,si);
-        signature.signedMD = new String(mdBytes);
+        signature.signedMD = new byte[(int)si];
+        System.arraycopy(fullMessage,index,signature.signedMD,0,si);
 
         index -= 394;
         byte[] keyBytes = new byte[392];
         System.arraycopy(fullMessage,index,keyBytes,0,392);
-        signature.senderPublicKey = new String(keyBytes);
+        signature.senderPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(keyBytes));
 
         index -= 8;
         assert index==0;
         System.arraycopy(fullMessage,0,lba,0,8);
         signature.timestamp = bytesToLong(lba);
 
-        signed = (signature.signedMD.length() > 0)
-                  && !signature.signedMD.equals(new String(new byte[si]));
+        signed = (signature.signedMD.length > 0)
+                  && !Arrays.equals(signature.signedMD, new byte[si]);
     }
 
     /**
      * Sets session key and sets symmetric key encryption flag to true
      * @params sessionKey   session key to be used for encryption/decrytion
      */
-    void setSessionKey(String sessionKey){
+    void setSessionKey(byte[] sessionKey){
         this.sessionKeyComponent.sessionKey = sessionKey;
         symmetric = true;
     }
@@ -126,25 +128,24 @@ public class Message{
         if(symmetric) {}//?
 
         //signature|payload > compress
-        byte[] md = signature.signedMD.getBytes();
         byte[] pl = payload.plaintext.getBytes();
 
-        short si = (short)md.length;
+        short si = (short)signature.signedMD.length;
         byte[] mdl = new byte[]{(byte)(si >> 8), (byte)si};
         si = (short)pl.length;
         byte[] pll = new byte[]{(byte)(si >> 8), (byte)si};
 
-        int len = 8+392+2+md.length+2+0+8+pl.length+2;
+        int len = 8+392+2+signature.signedMD.length+2+0+8+pl.length+2;
         byte[] output = new byte[len];
 
         System.arraycopy(longToBytes(signature.timestamp),0,output,0,8);
-        System.arraycopy(signature.senderPublicKey.getBytes(),0,output,8,392);
+        System.arraycopy(signature.senderPublicKey.getEncoded(),0,output,8,392);
         System.arraycopy(signature.messageDigest,0,output,400,2);
-        System.arraycopy(md,0,output,402,md.length);
-        System.arraycopy(mdl,0,output,402+md.length,2);
-        System.arraycopy(longToBytes(payload.timestamp),0,output,404+md.length,8);
-        System.arraycopy(pl,0,output,412+md.length,pl.length);
-        System.arraycopy(pll,0,output,412+md.length+pl.length,2);
+        System.arraycopy(signature.signedMD,0,output,402,signature.signedMD.length);
+        System.arraycopy(mdl,0,output,402+signature.signedMD.length,2);
+        System.arraycopy(longToBytes(payload.timestamp),0,output,404+signature.signedMD.length,8);
+        System.arraycopy(pl,0,output,412+signature.signedMD.length,pl.length);
+        System.arraycopy(pll,0,output,412+signature.signedMD.length+pl.length,2);
 
         byte[] cp_output = Encryption.compress(new String(output));
 
