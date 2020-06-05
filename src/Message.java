@@ -4,17 +4,20 @@
 //Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
 import java.util.Arrays;
+import java.security.*;
+import java.security.spec.X509EncodedKeySpec; 
+import java.security.spec.InvalidKeySpecException;
 
 public class Message{
     //fields (public for now) !!![final? immutable]!!!
     //--> header
     protected class SessionKeyComponent{
-        String recipientPublicKey;
-        String sessionKey; //idk if we use this
+        PublicKey recipientPublicKey;
+        byte[] sessionKey; //idk if we use this
     }
     protected class Signature{
         long timestamp;
-        String senderPublicKey;
+        PublicKey senderPublicKey;
         byte[] messageDigest;
         byte[] signedMD;
     }
@@ -39,7 +42,7 @@ public class Message{
      * @params plaintext        payload plaintext of pgp message
      * @params senderPublicKey  public key of the sending party
      */
-    public Message(String plaintext, String senderPublicKey, String recipientPublicKey){
+    public Message(String plaintext, PublicKey senderPublicKey, PublicKey recipientPublicKey){
         sessionKeyComponent = new SessionKeyComponent();
         signature = new Signature();
         payload = new Payload();
@@ -66,7 +69,7 @@ public class Message{
         this.construct(fullMessage);
     }
 
-    private void construct(byte[] fullMessage){
+    private void construct(byte[] fullMessage) throws InvalidKeySpecException, NoSuchAlgorithmException{
         int index = fullMessage.length - 2;
         byte[] sba = new byte[2];
         System.arraycopy(fullMessage,index,sba,0,2);
@@ -94,7 +97,7 @@ public class Message{
         index -= 394;
         byte[] keyBytes = new byte[392];
         System.arraycopy(fullMessage,index,keyBytes,0,392);
-        signature.senderPublicKey = new String(keyBytes);
+        signature.senderPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(keyBytes));
 
         index -= 8;
         assert index==0;
@@ -102,14 +105,14 @@ public class Message{
         signature.timestamp = bytesToLong(lba);
 
         signed = (signature.signedMD.length > 0)
-                  && !signature.signedMD.equals(new byte[si]);
+                  && !Arrays.equals(signature.signedMD, new byte[si]);
     }
 
     /**
      * Sets session key and sets symmetric key encryption flag to true
      * @params sessionKey   session key to be used for encryption/decrytion
      */
-    void setSessionKey(String sessionKey){
+    void setSessionKey(byte[] sessionKey){
         this.sessionKeyComponent.sessionKey = sessionKey;
         symmetric = true;
     }
@@ -136,7 +139,7 @@ public class Message{
         byte[] output = new byte[len];
 
         System.arraycopy(longToBytes(signature.timestamp),0,output,0,8);
-        System.arraycopy(signature.senderPublicKey.getBytes(),0,output,8,392);
+        System.arraycopy(signature.senderPublicKey.getEncoded(),0,output,8,392);
         System.arraycopy(signature.messageDigest,0,output,400,2);
         System.arraycopy(signature.signedMD,0,output,402,signature.signedMD.length);
         System.arraycopy(mdl,0,output,402+signature.signedMD.length,2);
