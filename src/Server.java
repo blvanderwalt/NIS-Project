@@ -14,6 +14,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -21,6 +26,9 @@ import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.awt.BorderLayout;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -43,10 +51,10 @@ public class Server {
 
     private static String clientName = "";
     private static String serverName = "Server";
-    private static String serverPubKey = "serverPub";
-    private static String serverPvtKey = "serverPvt";
-    private static String clientPubKey = "";
-    private static String sharedKey = "";
+    private static PublicKey serverPubKey;
+    private static PrivateKey serverPvtKey;
+    private static PublicKey clientPubKey;
+    private static byte[] sharedKey;
     private X509CertificateHolder clientCert;
 
     private static PrintStream defaultStream;
@@ -87,13 +95,18 @@ public class Server {
                     String [] namePubKey = in.nextLine().split("#");
                     name = namePubKey [0];
                     String cpubKey = namePubKey [1];
+                    byte[] clientUK = cpubKey.getBytes();
+
+                    // Not sure if this works??
+
+
                     if (name == null) {
                         return;
                     }
                     synchronized (clientName) {
                         if (!name.equals("") && clientName.equals("")) {
                             clientName = name;
-                            clientPubKey = cpubKey;
+                            clientPubKey = (PublicKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(clientUK));
                             serverClient.output = prt;
                             clientWriter = prt;
                             //getClientCertificate();
@@ -108,10 +121,25 @@ public class Server {
                 if (clientAccept.equals("declined")) {
                     return;
                 }
-                // get shared key
-                sharedKey = "shared";
+
+                // Create sharedKey
+                KeyGenerator k_gen = KeyGenerator.getInstance("AES");
+                k_gen.init(128); // size of AES Key - 128
+                SecretKey shared_key = k_gen.generateKey();
+                sharedKey = shared_key.getEncoded();
                 // send shared key to client
                 serverClient.sharedKey = sharedKey;
+
+                //Create initilization vector
+                SecureRandom random = new SecureRandom(); // generates random vector
+                byte[] init_vect = new byte[128/8]; // AES default block size = 128
+                random.nextBytes(init_vect);
+                IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+                serverClient.ivspec = ivspec;
+
+
+
+
 
                 // --- Show authentication complete --- //
                 serverClient.msgField.append(clientName + " has joined the chat." + "\n");
@@ -124,9 +152,12 @@ public class Server {
                         return;
                     }
                     serverClient.msgField.append(clientName + " encrypted: " + input + "\n");
+
                     // --- Decrypt & Decompress input --- //
                     //TODO: decrypt [-]
-                    byte[] dcMsg; //decrypted "input"
+                    byte[] init_vector = null;
+                    byte[] dcMsg = Encryption.fullDecryption(clientPubKey, sharedKey, init_vector, input.getBytes());
+
                     //TODO: decompress [x]
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
@@ -144,7 +175,7 @@ public class Server {
                 if (clientName != null || clientName != "") {
                     System.out.println(clientName + " is leaving");
                     clientName = "";
-                    clientPubKey = "";
+                    clientPubKey = null;
                 }
                 try {
                     socket.close();

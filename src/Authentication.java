@@ -22,7 +22,7 @@ public class Authentication {
      */
     public static void sign(final PrivateKey privateKey, Message msg){
         byte[] msghash = hash(msg.payload.plaintext);
-        byte[] sig = Encryption.encrypt(msghash, privateKey);
+        byte[] sig = Encryption.extractSig(msghash, privateKey);
 
         /*debug --*/ System.out.printf("(plaintext) %s -> (signature) %s%n", msg.payload.plaintext,sig);
         msg.signature.messageDigest = msghash;

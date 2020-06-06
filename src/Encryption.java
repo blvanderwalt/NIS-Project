@@ -23,9 +23,9 @@ public class Encryption {
 
     /**
      * Take in the message hash and private key
-     * @return String signature
+     * @return signature in a byte[]
     */
-    public static byte[] encrypt (byte[] msghash, PrivateKey privateKey) {
+    public static byte[] extractSig(byte[] msghash, PrivateKey privateKey) {
         byte[] signed_hash = null;
         try {
             Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -38,12 +38,21 @@ public class Encryption {
         return signed_hash;
     }
 
+    /**
+     * Take in the message hash and public key
+     * @return signature in a byte[]
+     */
+    public static byte[] extractSig(byte[] msghash, PublicKey publicKey) {
+        byte[] signed_hash = null;
+        try {
+            Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            signed_hash = cipher.doFinal(msghash);
+        }catch(NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException e){
+            e.printStackTrace();
+        }
 
-    public static String decrypt(String sig, PublicKey publicKey) {
-
-
-
-        return null;
+        return signed_hash;
     }
 
     /**
@@ -103,6 +112,83 @@ public class Encryption {
         return output;
     }
 
+    public static byte[] encrypt(byte[] encodedKey, byte[] init_vect, PrivateKey privateKey,
+                                 PublicKey publicKey, byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException{
+
+        // ToDo: Check if this works
+        SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
+
+        // TODO: Check if this works
+        IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, privateKey);
+
+        // Encrypt File content using AES key
+        Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        ci.init(Cipher.ENCRYPT_MODE, originalKey, ivspec);
+
+        ArrayList<byte[]> out = new ArrayList<byte[]>();
+
+        byte[] input_buffer = new byte[1024];
+        int input_len = 0;
+        ByteArrayInputStream in = new ByteArrayInputStream(message);
+
+        // in.read reads input_buffer.length # of bytes; returned as int
+        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
+            do {
+                byte[] out_buffer = cipher.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
+                if (out_buffer != null) {
+                    out.add(out_buffer);
+                }
+            } while ((input_len = in.read(input_buffer)) != -1);
+        }
+        byte[] out_buffer = cipher.doFinal();
+
+        return out_buffer;
+    }
+
+    public static byte[] decrypt(byte[] encodedKey, byte[] init_vect, PrivateKey privateKey, PublicKey publicKey,
+                                 String message) throws IOException, NoSuchPaddingException,
+            NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException,
+            InvalidAlgorithmParameterException {
+
+        // ToDO: Check if this works
+        SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
+        // TODO: Check if this works
+        IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipher.init(Cipher.DECRYPT_MODE, publicKey);
+
+        byte[] keyb = cipher.doFinal(encodedKey); //retrieves secret AES key
+        SecretKeySpec secret_key = new SecretKeySpec(keyb, "AES");
+
+        Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        ci.init(Cipher.DECRYPT_MODE, originalKey, ivspec);
+
+        ArrayList<byte[]> out = new ArrayList<byte[]>();
+
+        byte[] input_buffer = new byte[1024];
+        input_buffer = message.getBytes();
+
+        int input_len = 0;
+        ByteArrayInputStream in = new ByteArrayInputStream(input_buffer);
+
+        // in.read reads input_buffer.length # of bytes; returned as int
+        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
+            do {
+                byte[] out_buffer = cipher.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
+                if (out_buffer != null) {
+                    out.add(out_buffer);
+                }
+            } while ((input_len = in.read(input_buffer)) != -1);
+        }
+        byte[] out_buffer = cipher.doFinal();
+
+        return out_buffer;
+    }
+
     public static byte[] fullDecryption(PublicKey publicKey, byte[] encryptedsharedKey, byte[] init_vect,
                                           byte[]  msg) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
@@ -142,24 +228,6 @@ public class Encryption {
         byte[] out_buffer = cipher.doFinal();
 
         return out_buffer;
-    }
-
-    public static void processFile(Cipher cipher,InputStream in,OutputStream out) throws IOException,
-            BadPaddingException, IllegalBlockSizeException {
-        byte[] input_buffer = new byte[1024];
-        int input_len = 0;
-        // in.read reads input_buffer.length # of bytes; returned as int
-        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
-            do {
-                byte[] out_buffer = cipher.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
-                if (out_buffer != null) {
-                    out.write(out_buffer);
-                }
-            } while ((input_len = in.read(input_buffer)) != -1);
-        }
-        byte[] out_buffer = cipher.doFinal();
-        System.out.printf("Out buffer: %s\n", Arrays.toString(out_buffer));
-        if ( out_buffer != null ) out.write(out_buffer);
     }
 
     // --- Compression and Decompression --- //
@@ -206,4 +274,6 @@ public class Encryption {
             throw new RuntimeException ("Failed to unzip message", e);
         }
     }
+
+
 }

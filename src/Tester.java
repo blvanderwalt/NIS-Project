@@ -44,10 +44,10 @@ public class Tester{
 
             Authentication.authenticateSender(cert);
 
-            String Uk = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+            PublicKey Uk = null;//Base64.getEncoder().encodeToString(publicKey.getEncoded());
             String Rk = Base64.getEncoder().encodeToString(privateKey.getEncoded());
 
-            System.out.printf("public key length: %d%n",Uk.getBytes().length * 8);
+            System.out.printf("public key length: %d%n",Uk.getEncoded().length * 8);
 
             // short si = 19; byte[] arr = new byte[2];
             // arr[0] = (byte)(si >> 8); arr[1] = (byte)si;

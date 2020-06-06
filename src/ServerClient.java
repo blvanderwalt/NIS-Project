@@ -8,8 +8,12 @@ import java.io.FileInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.net.Socket;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 import java.awt.BorderLayout;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -19,7 +23,8 @@ import javax.swing.JTextField;
  // --- Server Client deals with input on the server side --- //
 public class ServerClient {
     String serverName = "Server";
-    String sharedKey;
+    byte[] sharedKey;
+    IvParameterSpec ivspec;
 
     Scanner input;
     PrintStream output;
@@ -28,7 +33,7 @@ public class ServerClient {
     JTextArea msgField = new JTextArea(16, 50);
 
     // --- Takes Printstream of client to send messages directly --- //
-    public ServerClient(PrintStream out) {
+    public ServerClient(PrintStream out) throws NoSuchAlgorithmException {
         output = out;
         txtEnter.setEditable(false);
         msgField.setEditable(false);
@@ -38,16 +43,20 @@ public class ServerClient {
         UI.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         UI.setVisible(true);
 
+
+
         // --- Send message and print it on screen --- //
         txtEnter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = txtEnter.getText();
                 msgField.append(serverName + ": " + msg + "\n");
+
                 // --- Compress & Encrypt --- //
                 //TODO: compress [-] ~ needs both public keys + server private key
-                Message message = new Message(msg,pubKey,clientPubKey);
+                Message message = new Message(msg, pubKey,clientPubKey);
                 Authentication.sign(pvtKey,message);
                 byte[] msgBytes = message.toByteArray();
+
                 //TODO: encrypt [-]
 
                 output.println("MESSAGE " + msg + "\n");

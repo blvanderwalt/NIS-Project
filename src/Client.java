@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.*;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -23,6 +24,11 @@ import java.util.concurrent.ExecutorService;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -42,14 +48,15 @@ import java.util.Locale;
 
 
 public class Client {
-    private String pubKey;
-    private String pvtKey;
+    private PublicKey pubKey;
+    private PrivateKey pvtKey;
     String serverName;
-    String serverPubKey;
+    PublicKey serverPubKey;
     X509CertificateHolder serverCert;
 
     String clientName = "Client";
-    String sharedKey;
+    byte[] sharedKey;
+    byte[] init_vector;
     String serverAddress;
     Scanner input;
     PrintStream output;
@@ -58,7 +65,7 @@ public class Client {
     JTextArea msgField = new JTextArea(16, 50);
 
     // --- Takes server IP address and same port number to connect to each other --- //
-    public Client(String serverAddress) {
+    public Client(String serverAddress) throws NoSuchAlgorithmException {
         this.serverAddress = serverAddress;
         txtEnter.setEditable(false);
         msgField.setEditable(false);
@@ -68,10 +75,19 @@ public class Client {
 
         // --- generate public/private key pair --- //
         //TODO: assign pubKey and pvtKey [-]
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048); //size of RSA key - 2048
+        KeyPair pair = keyGen.generateKeyPair();
+
+        pvtKey = pair.getPrivate(); // returns PKCS#8 format
+        pubKey = pair.getPublic(); // returns X.509 format
+
+        byte[] publicByteArray = pubKey.getEncoded();
+
         //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
         SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
             new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-            serverPubKey.getEncoded() 
+            serverPubKey.getEncoded()
         );
         X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
             new X500Name("CN=issuer"), //issuer
@@ -96,7 +112,18 @@ public class Client {
                 Message message = new Message(msg,pubKey,serverPubKey);
                 Authentication.sign(pvtKey,message);
                 byte[] msgBytes = message.toByteArray();
+
                 //TODO: encrypt msgBytes [-]
+                init_vector = null; // get from Server
+                sharedKey = null; // get from Server
+                byte[] encryptedMsgBytes = null;
+
+                try {
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, pvtKey, pubKey,msgBytes);
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
+                    ex.printStackTrace();
+                }
+
 
                 output.println(msg);
                 txtEnter.setText("");
@@ -105,7 +132,7 @@ public class Client {
         });
     }
 
-    private void run() throws IOException {
+    private void run() throws IOException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException {
         try {
             Socket socket = new Socket(serverAddress, 59002);
             input = new Scanner(socket.getInputStream());
@@ -120,8 +147,13 @@ public class Client {
                     txtEnter.setEditable(true);
                     String [] namePubKey = line.split("#");
                     serverName = namePubKey [0];
-                    serverPubKey = namePubKey [1];
+
+                    // TODO: get Server Information
+                    serverPubKey = null; // Get PublicKey from Server
+                    init_vector = null; // get IvParameterSpec from Server
+                    sharedKey = null; // get sharedKey from Server
                     boolean authenticate = true;
+
                     // --- Authenticate Server --- //
                     // TODO: authentication [x]
                     authenticate = Authentication.authenticateSender(serverCert);
@@ -151,9 +183,12 @@ public class Client {
                 } else if (line.startsWith("MESSAGE")) {
                     String encryptedMessage = line.substring(8);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
+
                     // --- Decompression & Decryption --- //
                     //TODO: decryption [-]
-                    byte[] dcMsg; //decrypted but still compressed message
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, pvtKey, pubKey, encryptedMessage);
+
+
                     //TODO: decompress [x]
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
