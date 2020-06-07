@@ -112,13 +112,10 @@ public class Encryption {
         return output;
     }
 
-    public static byte[] encrypt(byte[] encodedKey, byte[] init_vect, PrivateKey privateKey,
+    public static byte[] encrypt(SecretKey secretKey, byte[] init_vect, PrivateKey privateKey,
                                  PublicKey publicKey, byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException{
 
-        // ToDo: Check if this works
-        SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
-
-        // TODO: Check if this works
+        //SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
         IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -126,7 +123,7 @@ public class Encryption {
 
         // Encrypt File content using AES key
         Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        ci.init(Cipher.ENCRYPT_MODE, originalKey, ivspec);
+        ci.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
 
         ArrayList<byte[]> out = new ArrayList<byte[]>();
 
@@ -148,24 +145,22 @@ public class Encryption {
         return out_buffer;
     }
 
-    public static byte[] decrypt(byte[] encodedKey, byte[] init_vect, PrivateKey privateKey, PublicKey publicKey,
+    public static byte[] decrypt(SecretKey secretKey, byte[] init_vect, PrivateKey privateKey, PublicKey publicKey,
                                  String message) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException,
             InvalidAlgorithmParameterException {
 
-        // ToDO: Check if this works
-        SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
-        // TODO: Check if this works
+        //SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
         IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, publicKey);
 
-        byte[] keyb = cipher.doFinal(encodedKey); //retrieves secret AES key
+        byte[] keyb = cipher.doFinal(secretKey.getEncoded()); //retrieves secret AES key
         SecretKeySpec secret_key = new SecretKeySpec(keyb, "AES");
 
         Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        ci.init(Cipher.DECRYPT_MODE, originalKey, ivspec);
+        ci.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
 
         ArrayList<byte[]> out = new ArrayList<byte[]>();
 

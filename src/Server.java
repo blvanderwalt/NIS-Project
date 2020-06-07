@@ -5,13 +5,7 @@
 //    messages making use of other classes utilities
 //Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.FileInputStream;
-import java.io.DataInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyFactory;
@@ -49,16 +43,18 @@ import java.util.Locale;
 
 public class Server {
 
-    private static String clientName = "";
-    private static String serverName = "Server";
     private static PublicKey serverPubKey;
     private static PrivateKey serverPvtKey;
     private static PublicKey clientPubKey;
-    private static byte[] sharedKey;
-    private X509CertificateHolder clientCert;
+    private static SecretKey sharedKey; // B
+    public static byte[] init_vector;
 
-    private static PrintStream defaultStream;
-    private static PrintStream clientWriter;
+
+    private X509CertificateHolder clientCert;
+    private static X509CertificateHolder serverCert; //B
+
+    private static ObjectOutputStream defaultStream;
+    private static ObjectOutputStream clientWriter;
 
     private static ServerClient serverClient;
 
@@ -75,9 +71,8 @@ public class Server {
     }
 
     private static class Handler implements Runnable {
-        private String name;
         private Socket socket;
-        private Scanner in;
+        private ObjectInputStream in;
 
 
 
@@ -87,37 +82,38 @@ public class Server {
 
         public void run() {
             try {
-                in = new Scanner(socket.getInputStream());
-                PrintStream prt = new PrintStream(socket.getOutputStream(), true);
+                in = new ObjectInputStream(socket.getInputStream());
+                ObjectOutputStream prt = new ObjectOutputStream(socket.getOutputStream());
                 // Keep requesting a name until we get a unique one.
                 while (true) {
-                    prt.println("SUBMITNAME");
-                    String [] namePubKey = in.nextLine().split("#");
-                    name = namePubKey [0];
-                    String cpubKey = namePubKey [1];
-                    byte[] clientUK = cpubKey.getBytes();
-
-                    // Not sure if this works??
-
-
-                    if (name == null) {
-                        return;
-                    }
-                    synchronized (clientName) {
-                        if (!name.equals("") && clientName.equals("")) {
-                            clientName = name;
-                            clientPubKey = (PublicKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(clientUK));
+                    prt.writeObject("SUBMITNAME");
+                    PublicKey cPubKey = (PublicKey)in.readObject();
+                    synchronized (clientPubKey) {
+                        if (!cPubKey.equals(null) && clientPubKey.equals(null)) {
+                            clientPubKey = cPubKey;
                             serverClient.output = prt;
                             clientWriter = prt;
-                            //getClientCertificate();
+                            serverClient.clientUKey = clientPubKey;
+                            serverClient.serverRKey = serverPvtKey;
+                            serverClient.serverUKey = serverPubKey;
                             break;
                         }
                     }
                 }
                 // --- Authentication --- //
-                // authenticate
-                clientWriter.println("NAMEACCEPTED " + serverName + "#" + serverPubKey);
-                String clientAccept =  in.nextLine();
+                //Get certificate and verify
+                clientWriter.writeObject("SENDCERT");
+                X509CertificateHolder clientCert = (X509CertificateHolder) in.readObject();
+                if (!Authentication.authenticateSender(clientCert)) {
+                    serverClient.msgField.append("Client not verified - cancelling connection");
+                    clientWriter.writeObject("DECLINED");
+                    return;
+                }
+                //Send Public key to client and await their verification
+                clientWriter.writeObject("NAMEACCEPTED");
+                clientWriter.writeObject(serverPubKey);
+                clientWriter.writeObject(serverCert);
+                String clientAccept =  (String)in.readObject();
                 if (clientAccept.equals("declined")) {
                     return;
                 }
@@ -126,9 +122,9 @@ public class Server {
                 KeyGenerator k_gen = KeyGenerator.getInstance("AES");
                 k_gen.init(128); // size of AES Key - 128
                 SecretKey shared_key = k_gen.generateKey();
-                sharedKey = shared_key.getEncoded();
+                sharedKey = shared_key;
                 // send shared key to client
-                serverClient.sharedKey = sharedKey;
+                serverClient.sharedKey = sharedKey; // CHeck whats up here
 
                 //Create initilization vector
                 SecureRandom random = new SecureRandom(); // generates random vector
@@ -142,28 +138,33 @@ public class Server {
 
 
                 // --- Show authentication complete --- //
-                serverClient.msgField.append(clientName + " has joined the chat." + "\n");
+                serverClient.msgField.append("Client has joined the chat.\n");
                 serverClient.txtEnter.setEditable(true);
 
                 // --- Read messages from client --- //
                 while (true) {
-                    String input = in.nextLine();
-                    if (input.toLowerCase().startsWith("/quit")) {
+                    Message input = (Message)in.readObject();
+                    if (input.payload.plaintext.startsWith("/quit")) {
                         return;
                     }
-                    serverClient.msgField.append(clientName + " encrypted: " + input + "\n");
-
+                    serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
                     //TODO: decrypt [-]
                     byte[] init_vector = null;
-                    byte[] dcMsg = Encryption.fullDecryption(clientPubKey, sharedKey, init_vector, input.getBytes());
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
+                            input.payload.plaintext);
 
                     //TODO: decompress [x]
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
-                    input = msg.payload.plaintext;
+                    if (Authentication.authenticateMessage(msg)){
+                        serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
+                    }
+                    else {
+                        serverClient.msgField.append("Message Authentication failed");
+                    }
 
-                    serverClient.msgField.append(clientName + " decrypted: " + input + "\n");
+
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -172,9 +173,8 @@ public class Server {
                 if (clientWriter != null) {
                     clientWriter = null;
                 }
-                if (clientName != null || clientName != "") {
-                    System.out.println(clientName + " is leaving");
-                    clientName = "";
+                if (clientPubKey != null) {
+                    System.out.println("Client is leaving");
                     clientPubKey = null;
                 }
                 try {

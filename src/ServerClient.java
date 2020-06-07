@@ -1,14 +1,11 @@
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
+import java.io.*;
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Scanner;
 import java.awt.BorderLayout;
 import javax.crypto.KeyGenerator;
@@ -22,18 +19,21 @@ import javax.swing.JTextField;
 
  // --- Server Client deals with input on the server side --- //
 public class ServerClient {
-    String serverName = "Server";
-    byte[] sharedKey;
+    SecretKey sharedKey;
+    PublicKey serverUKey;
+    PrivateKey serverRKey;
+    PublicKey clientUKey;
     IvParameterSpec ivspec;
 
+
     Scanner input;
-    PrintStream output;
+    ObjectOutputStream output;
     JFrame UI = new JFrame("Encrypto - Server");
     JTextField txtEnter = new JTextField(50);
     JTextArea msgField = new JTextArea(16, 50);
 
     // --- Takes Printstream of client to send messages directly --- //
-    public ServerClient(PrintStream out) throws NoSuchAlgorithmException {
+    public ServerClient(ObjectOutputStream out) throws NoSuchAlgorithmException {
         output = out;
         txtEnter.setEditable(false);
         msgField.setEditable(false);
@@ -49,18 +49,23 @@ public class ServerClient {
         txtEnter.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 String msg = txtEnter.getText();
-                msgField.append(serverName + ": " + msg + "\n");
+                msgField.append("server: " + msg + "\n");
 
                 // --- Compress & Encrypt --- //
                 //TODO: compress [-] ~ needs both public keys + server private key
-                Message message = new Message(msg, pubKey,clientPubKey);
-                Authentication.sign(pvtKey,message);
-                byte[] msgBytes = message.toByteArray();
+                Message message = new Message(msg,serverUKey,clientUKey);
+                Authentication.sign(serverRKey,message);
+                byte[] msgBytes = message.toByteArray(); // toByteArray Compresses Right??
+                byte[] encryptedMsgBytes = null;
 
-                //TODO: encrypt [-]
-
-                output.println("MESSAGE " + msg + "\n");
-                txtEnter.setText("");
+                //TODO: Add encryptedMessage to Message class and send it
+                try {
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), serverRKey, serverUKey,msgBytes);
+                    output.writeObject(new Message(encryptedMsgBytes)); // Make new object with encryptedMessage
+                    txtEnter.setText("");
+                } catch (Exception ex){
+                    System.out.println("Error Sending Message Object");
+                }
             }
 
         });

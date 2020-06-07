@@ -55,14 +55,14 @@ public class Message{
      * string constructor
      * @params fullMessage string containing a decompressed signature and payload
      */
-    public Message(String fullMessage){
+    public Message(String fullMessage) throws InvalidKeySpecException, NoSuchAlgorithmException {
         sessionKeyComponent = new SessionKeyComponent();
         signature = new Signature();
         payload = new Payload();
         this.construct(fullMessage.getBytes());
     }
     //byte[] constructor
-    public Message(byte[] fullMessage){
+    public Message(byte[] fullMessage) throws InvalidKeySpecException, NoSuchAlgorithmException {
         sessionKeyComponent = new SessionKeyComponent();
         signature = new Signature();
         payload = new Payload();
