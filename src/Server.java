@@ -145,13 +145,14 @@ public class Server {
                     // --- Decrypt & Decompress input --- //
                     byte[] init_vector = null;
                     byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
-                            input);
+                            new String(input));
 
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
+                    
+                    if (msg.payload.plaintext.startsWith("/quit")) { return; }
                     if (Authentication.authenticateMessage(msg)){
-                        if (input.payload.plaintext.startsWith("/quit")) { return; }
-                        serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
+                        serverClient.msgField.append("Client decrypted: " + msg.payload.plaintext + "\n");
                     }
                     else {
                         serverClient.msgField.append("Message Authentication failed");
