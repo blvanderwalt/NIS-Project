@@ -204,7 +204,7 @@ public class Client {
 
                     // --- Authenticate Message --- //
                     if (Authentication.authenticateMessage(newMsg)){
-                        msgField.append("Server decrypted: " + decompMsg + "\n");
+                        msgField.append("Server decrypted: " + newMsg.payload.plaintext + "\n");
                     }
                     else {
                         msgField.append("Message Authentication failed");
