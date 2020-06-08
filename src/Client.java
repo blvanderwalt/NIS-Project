@@ -57,8 +57,7 @@ public class Client {
     X509CertificateHolder serverCert;
     X509CertificateHolder clientCert;
     private SecretKey sharedKey;
-    private byte[] init_vector;
-
+    private IvParameterSpec ivspec;
 
     String serverAddress;
     ObjectInputStream input;
@@ -163,7 +162,7 @@ public class Client {
 
                         // TODO: get Server Information BBBBBBBBBBBBBBBBB
                         serverPubKey = null; // Get PublicKey from Server
-                        byte [] init_vector = null; // get IvParameterSpec from Server BBBBBBBBBBB
+                        ivspec = null; // get IvParameterSpec from Server
                         sharedKey = null; // get sharedKey from Server
 
                         // --- Authenticate Server --- //
@@ -200,7 +199,8 @@ public class Client {
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
                     //TODO: decryption [-]
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, clientPvtKey, clientPubKey, encryptedMessage);
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, clientPubKey,
+                            encryptedMessage);
 
 
                     //TODO: decompress [x]

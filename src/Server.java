@@ -46,8 +46,8 @@ public class Server {
     private static PublicKey serverPubKey;
     private static PrivateKey serverPvtKey;
     private static PublicKey clientPubKey;
-    private static SecretKey sharedKey; // B
-    public static byte[] init_vector;
+    private static SecretKey sharedKey;
+    private static IvParameterSpec ivspec;
 
 
     private X509CertificateHolder clientCert;
@@ -121,19 +121,16 @@ public class Server {
                 // Create sharedKey
                 KeyGenerator k_gen = KeyGenerator.getInstance("AES");
                 k_gen.init(128); // size of AES Key - 128
-                SecretKey shared_key = k_gen.generateKey();
-                sharedKey = shared_key;
+                sharedKey = k_gen.generateKey();
                 // send shared key to client
-                serverClient.sharedKey = sharedKey; // CHeck whats up here
+                serverClient.sharedKey = sharedKey;
 
                 //Create initilization vector
                 SecureRandom random = new SecureRandom(); // generates random vector
                 byte[] init_vect = new byte[128/8]; // AES default block size = 128
                 random.nextBytes(init_vect);
-                IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+                ivspec = new IvParameterSpec(init_vect);
                 serverClient.ivspec = ivspec;
-
-
 
 
 
@@ -150,8 +147,7 @@ public class Server {
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
                     //TODO: decrypt [-]
-                    byte[] init_vector = null;
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), serverPvtKey, serverPubKey,
                             input.payload.plaintext);
 
                     //TODO: decompress [x]

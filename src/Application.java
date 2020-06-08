@@ -23,7 +23,7 @@ import javax.crypto.spec.IvParameterSpec;
 public class Application {
     public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException, BadPaddingException, IllegalBlockSizeException {
 
-        String Message = "gotcha";
+        String Message = "This is not a secret";
         System.out.printf("Unencrypted Message: %s\n", Message);
 
         System.out.printf("Bytes of OG Message %s\n", Arrays.toString(Message.getBytes()) );
@@ -45,18 +45,30 @@ public class Application {
         PrivateKey privateKey = pair.getPrivate(); // returns PKCS#8 format
         PublicKey publicKey = pair.getPublic(); // returns X.509 format
 
-        // contains sharedkey and init_vector
-        byte[][] encryptedOut = Encryption.fullEncryption(sKey, init_vect, ivspec, privateKey, publicKey, Message);
-        //encryptedOut[0] = bytes_sharedKey;
-        //encryptedOut[1] = init_vec;
-        //encryptedOut[2] = out_buffer;
+        //* Use Full Encryption
+             byte[][] encryptedOut = Encryption.fullEncryption(sKey, init_vect, ivspec, privateKey, publicKey, Message);
+             //encryptedOut[0] = bytes_sharedKey;
+             //encryptedOut[1] = init_vec;
+             //encryptedOut[2] = out_buffer;
 
-        System.out.println("==========================================");
+             System.out.println("==========================================");
 
-        byte[] final_message = Encryption.fullDecryption(publicKey, encryptedOut[0], encryptedOut[1],
-                encryptedOut[2]);
-        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
-        String message = new String(final_message);
-        System.out.printf("Message: %s", message);
+             byte[] final_message = Encryption.fullDecryption(publicKey, encryptedOut[0], encryptedOut[1],
+             encryptedOut[2]);
+             System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
+             String message = new String(final_message);
+             System.out.printf("Message: %s", message);
+
+
+//        byte[] encryptedOut = Encryption.encrypt(sKey, init_vect, privateKey, publicKey, Message.getBytes());
+//        System.out.println("==========================================");
+//
+//        byte[] final_message = Encryption.decrypt(sKey, init_vect, privateKey, publicKey, new String(encryptedOut));
+//        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
+//        String message = new String(final_message);
+//        System.out.printf("Message: %s", message);
+
     }
+
+
 }

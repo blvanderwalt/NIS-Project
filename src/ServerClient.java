@@ -60,7 +60,7 @@ public class ServerClient {
 
                 //TODO: Add encryptedMessage to Message class and send it
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), serverRKey, serverUKey,msgBytes);
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), serverRKey, clientUKey,msgBytes);
                     output.writeObject(new Message(encryptedMsgBytes)); // Make new object with encryptedMessage
                     txtEnter.setText("");
                 } catch (Exception ex){
