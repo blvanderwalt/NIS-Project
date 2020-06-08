@@ -54,7 +54,6 @@ public class Client {
     private PublicKey clientPubKey;
     private PrivateKey clientPvtKey;
     PublicKey serverPubKey;
-    X509CertificateHolder serverCert;
     X509CertificateHolder clientCert;
     private SecretKey sharedKey;
     private byte[] init_vector;

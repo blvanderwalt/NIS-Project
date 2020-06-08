@@ -1,5 +1,6 @@
 #Ignored Folders
 .idea
+bin
 
 #Ignored Files
 src/*.class

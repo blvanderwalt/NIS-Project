@@ -176,7 +176,6 @@ public class Server {
 
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
-
                     if (msg.payload.plaintext.startsWith("/quit")) { return; }
                     if (Authentication.authenticateMessage(msg)){
                         serverClient.msgField.append("Client decrypted: " + msg.payload.plaintext + "\n");
