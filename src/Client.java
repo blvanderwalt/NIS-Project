@@ -54,10 +54,10 @@ public class Client {
     private PublicKey clientPubKey;
     private PrivateKey clientPvtKey;
     PublicKey serverPubKey;
-    X509CertificateHolder serverCert;
     X509CertificateHolder clientCert;
     private SecretKey sharedKey;
     private byte[] init_vector;
+    private IvParameterSpec ivspec;
 
     String serverAddress;
     ObjectInputStream input;
@@ -114,10 +114,6 @@ public class Client {
                 Message message = new Message(msg,clientPubKey,serverPubKey);
                 Authentication.sign(clientPvtKey,message);
                 byte[] msgBytes = message.toByteArray();
-
-                //TODO: encrypt msgBytes [-]
-                byte[] init_vector = null; // get from Server
-                sharedKey = null; // get from Server
                 byte[] encryptedMsgBytes = null;
 
                 try {
@@ -138,8 +134,8 @@ public class Client {
     private void run() throws IOException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, ClassNotFoundException, InvalidKeySpecException {
         try {
             Socket socket = new Socket(serverAddress, 59002);
-            input = new ObjectInputStream(socket.getInputStream());
             output = new ObjectOutputStream(socket.getOutputStream());
+            input = new ObjectInputStream(socket.getInputStream());
             while (true) {
 
                 Object obj = input.readObject();
@@ -154,6 +150,7 @@ public class Client {
                     if (line.startsWith("SENDCERT")) {
                         output.writeObject(clientCert);
                     }
+                    line = (String)input.readObject();
                     if (line.startsWith("NAMEACCEPTED")) {
                         this.UI.setTitle("Encrypto - Client");
                         serverPubKey = (PublicKey)input.readObject();
@@ -164,6 +161,8 @@ public class Client {
                         if (authenticate) {
                             output.writeObject("accepted");
                             sharedKey = (SecretKey) input.readObject();
+                            init_vector = (byte[]) input.readObject();
+                            ivspec = new IvParameterSpec(init_vector);
                             msgField.append("Joined chat with Server\n");
                             txtEnter.setEditable(true);
                         }
