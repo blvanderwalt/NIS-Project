@@ -8,10 +8,7 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.PublicKey;
-import java.security.SecureRandom;
+import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Set;
@@ -47,6 +44,7 @@ public class Server {
     private static PrivateKey serverPvtKey;
     private static PublicKey clientPubKey;
     private static SecretKey sharedKey;
+    public static byte[] init_vector;
     public static IvParameterSpec ivspec;
 
 
@@ -62,6 +60,32 @@ public class Server {
         System.out.println("The chat server is running...");
         serverClient = new ServerClient(defaultStream);
         ExecutorService pool = Executors.newFixedThreadPool(500);
+
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048); //size of RSA key - 2048
+        KeyPair pair = keyGen.generateKeyPair();
+
+        serverPvtKey = pair.getPrivate(); // returns PKCS#8 format
+        serverPubKey = pair.getPublic(); // returns X.509 format
+
+        //TODO: create certificate [x]
+        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
+                new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
+                serverPubKey.getEncoded()
+        );
+        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
+                new X500Name("CN=issuer"), //issuer
+                new BigInteger("3874699348569"), //serial no
+                new GregorianCalendar(2020,4,1).getTime(), //issue date
+                new GregorianCalendar(2020,8,31).getTime(), //expiry date
+                Locale.getDefault(), //date locale
+                new X500Name("CN=server"), //subject
+                subjectPubKeyInfo //subject's public key info: algorithm and public key
+        );
+        serverCert = certBuild.build(
+                new Signer(subjectPubKeyInfo.getAlgorithm(), serverPubKey.getEncoded())
+        );
+
         try (ServerSocket listener = new ServerSocket(59002)) {
             while (true) {
                 Handler handle = new Handler(listener.accept());
@@ -82,22 +106,21 @@ public class Server {
 
         public void run() {
             try {
-                in = new ObjectInputStream(socket.getInputStream());
                 ObjectOutputStream prt = new ObjectOutputStream(socket.getOutputStream());
+                in = new ObjectInputStream(socket.getInputStream());
+
                 // Keep requesting a name until we get a unique one.
                 while (true) {
                     prt.writeObject("SUBMITNAME");
                     PublicKey cPubKey = (PublicKey)in.readObject();
-                    synchronized (clientPubKey) {
-                        if (!cPubKey.equals(null) && clientPubKey.equals(null)) {
-                            clientPubKey = cPubKey;
-                            serverClient.output = prt;
-                            clientWriter = prt;
-                            serverClient.clientUKey = clientPubKey;
-                            serverClient.serverRKey = serverPvtKey;
-                            serverClient.serverUKey = serverPubKey;
-                            break;
-                        }
+                    if (cPubKey != null && clientPubKey == null) {
+                        clientPubKey = cPubKey;
+                        serverClient.output = prt;
+                        clientWriter = prt;
+                        serverClient.clientUKey = clientPubKey;
+                        serverClient.serverRKey = serverPvtKey;
+                        serverClient.serverUKey = serverPubKey;
+                        break;
                     }
                 }
                 // --- Authentication --- //
@@ -121,18 +144,18 @@ public class Server {
                 // Create sharedKey
                 KeyGenerator k_gen = KeyGenerator.getInstance("AES");
                 k_gen.init(128); // size of AES Key - 128
-                sharedKey = k_gen.generateKey();
-                // send shared key to client
-                serverClient.sharedKey = sharedKey;
+                SecretKey shared_key = k_gen.generateKey();
+                sharedKey = shared_key;
+                clientWriter.writeObject(sharedKey); // send shared key to client
+                serverClient.sharedKey = sharedKey; // CHeck whats up here
 
                 //Create initilization vector
                 SecureRandom random = new SecureRandom(); // generates random vector
                 byte[] init_vect = new byte[128/8]; // AES default block size = 128
                 random.nextBytes(init_vect);
-                ivspec = new IvParameterSpec(init_vect);
+                IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+                clientWriter.writeObject(init_vect); // send ivspec to client
                 serverClient.ivspec = ivspec;
-
-
 
                 // --- Show authentication complete --- //
                 serverClient.msgField.append("Client has joined the chat.\n");
@@ -144,14 +167,15 @@ public class Server {
                     in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), serverPvtKey, serverPubKey,
-                            input);
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
+                            new String(input));
 
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
+
+                    if (msg.payload.plaintext.startsWith("/quit")) { return; }
                     if (Authentication.authenticateMessage(msg)){
-                        if (input.payload.plaintext.startsWith("/quit")) { return; }
-                        serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
+                        serverClient.msgField.append("Client decrypted: " + msg.payload.plaintext + "\n");
                     }
                     else {
                         serverClient.msgField.append("Message Authentication failed");

@@ -199,7 +199,6 @@ public class Encryption {
     public static byte[] fullDecryption(PublicKey publicKey, byte[] encryptedsharedKey, byte[] init_vect,
                                           byte[]  msg) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
-
         //FileInputStream in = new FileInputStream("encryptedAESkey.enc");
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.DECRYPT_MODE, publicKey);
