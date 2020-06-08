@@ -133,31 +133,24 @@ public class Server {
                 IvParameterSpec ivspec = new IvParameterSpec(init_vect);
                 serverClient.ivspec = ivspec;
 
-
-
-
-
                 // --- Show authentication complete --- //
                 serverClient.msgField.append("Client has joined the chat.\n");
                 serverClient.txtEnter.setEditable(true);
 
                 // --- Read messages from client --- //
                 while (true) {
-                    Message input = (Message)in.readObject();
-                    if (input.payload.plaintext.startsWith("/quit")) {
-                        return;
-                    }
+                    byte[] input = new byte[in.readInt()];
+                    in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    //TODO: decrypt [-]
                     byte[] init_vector = null;
                     byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
-                            input.payload.plaintext);
+                            input);
 
-                    //TODO: decompress [x]
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
                     if (Authentication.authenticateMessage(msg)){
+                        if (input.payload.plaintext.startsWith("/quit")) { return; }
                         serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
                     }
                     else {
@@ -185,26 +178,4 @@ public class Server {
         }
 
     }
-
-    /*
-    public static void getClientCertificate(){
-        //TODO: create certificate [x]
-        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
-            new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-            clientPubKey.getEncoded()
-        );
-        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
-            new X500Name("CN=issuer"), //issuer
-            new BigInteger("3874699348569"), //serial no
-            new GregorianCalendar(2020,4,1).getTime(), //issue date
-            new GregorianCalendar(2020,8,31).getTime(), //expiry date
-            Locale.getDefault(), //date locale
-            new X500Name("CN="+clientName), //subject
-            subjectPubKeyInfo //subject's public key info: algorithm and public key
-        );
-        clientCert = certBuild.build(
-            new Signer(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
-        );
-    }
-    */
 }

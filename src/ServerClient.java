@@ -61,7 +61,8 @@ public class ServerClient {
                 //TODO: Add encryptedMessage to Message class and send it
                 try {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), serverRKey, serverUKey,msgBytes);
-                    output.writeObject(new Message(encryptedMsgBytes)); // Make new object with encryptedMessage
+                    output.writeInt(encryptedMsgBytes.length);
+                    output.write(encryptedMsgBytes); // Send encryptedMessage
                     txtEnter.setText("");
                 } catch (Exception ex){
                     System.out.println("Error Sending Message Object");

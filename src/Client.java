@@ -59,7 +59,6 @@ public class Client {
     private SecretKey sharedKey;
     private byte[] init_vector;
 
-
     String serverAddress;
     ObjectInputStream input;
     ObjectOutputStream output;
@@ -88,22 +87,22 @@ public class Client {
         byte[] publicByteArray = clientPubKey.getEncoded();
 
         //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
-//        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
-//                new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-//                serverPubKey.getEncoded()
-//        );
-//        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
-//            new X500Name("CN=issuer"), //issuer
-//            new BigInteger("3874699348568"), //serial no
-//            new GregorianCalendar(2020,4,1).getTime(), //issue date
-//            new GregorianCalendar(2020,8,31).getTime(), //expiry date
-//            Locale.getDefault(), //date locale
-//            new X500Name("CN=server"), //subject
-//            subjectPubKeyInfo //subject's public key info: algorithm and public key
-//        );
-        clientCert = null; //certBuild.build(
-//                new Signer(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
-//        );
+        SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
+            new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
+            clientPubKey.getEncoded() //self-signed
+        );
+        X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
+            new X500Name("CN=issuer"), //issuer
+            new BigInteger("3874699348568"), //serial no
+            new GregorianCalendar(2020,4,1).getTime(), //issue date
+            new GregorianCalendar(2020,8,31).getTime(), //expiry date
+            Locale.getDefault(), //date locale
+            new X500Name("CN=server"), //subject
+            subjectPubKeyInfo //subject's public key info: algorithm and public key
+        );
+        clientCert = certBuild.build(
+            new Signer(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
+        );
 
         // --- Send message and print it on screen --- //
         txtEnter.addActionListener(new ActionListener() {
@@ -123,12 +122,14 @@ public class Client {
 
                 try {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, clientPubKey,msgBytes);
-                    output.writeObject(new Message(encryptedMsgBytes));
+                    output.writeInt(encryptedMsgBytes.length);
+                    output.write(encryptedMsgBytes);
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException | InvalidKeySpecException ex) {
                     ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
                 }
                 txtEnter.setText("");
+
             }
 
         });
@@ -148,33 +149,25 @@ public class Client {
                         //Send public Key
                         output.writeObject(clientPubKey);
                     }
-                    line = (String) input.readObject();
+
+                    line = (String)input.readObject();
                     if (line.startsWith("SENDCERT")) {
                         output.writeObject(clientCert);
                     }
-
-
                     if (line.startsWith("NAMEACCEPTED")) {
                         this.UI.setTitle("Encrypto - Client");
-                        this.UI.setTitle("Encrypto - Client");
-                        serverPubKey = (PublicKey) input.readObject();
-                        X509CertificateHolder servCert = (X509CertificateHolder) input.readObject();
+                        serverPubKey = (PublicKey)input.readObject();
+                        X509CertificateHolder servCert = (X509CertificateHolder)input.readObject();
                         boolean authenticate = true;
-
-                        // TODO: get Server Information BBBBBBBBBBBBBBBBB
-                        serverPubKey = null; // Get PublicKey from Server
-                        byte [] init_vector = null; // get IvParameterSpec from Server BBBBBBBBBBB
-                        sharedKey = null; // get sharedKey from Server
-
                         // --- Authenticate Server --- //
-                        // TODO: authentication [x]
                         authenticate = Authentication.authenticateSender(servCert);
                         if (authenticate) {
                             output.writeObject("accepted");
                             sharedKey = (SecretKey) input.readObject();
                             msgField.append("Joined chat with Server\n");
                             txtEnter.setEditable(true);
-                        } else {
+                        }
+                        else {
                             output.writeObject("declined");
                             msgField.append("Server identity unknown, closing services...\n");
                             try {
@@ -194,9 +187,11 @@ public class Client {
 
                     }
 
-                } else if (obj instanceof Message) {
-                    Message msg = (Message) obj;
-                    String encryptedMessage = msg.payload.plaintext;
+                }
+                else {
+                    byte[] msg = new byte[(int)obj];
+                    input.readFully(msg);
+                    String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
                     //TODO: decryption [-]
@@ -208,10 +203,10 @@ public class Client {
                     Message newMsg = new Message(decompMsg);
 
                     // --- Authenticate Message --- //
-                    //TODO: authentication [-]
-                    if (Authentication.authenticateMessage(newMsg)) {
+                    if (Authentication.authenticateMessage(newMsg)){
                         msgField.append("Server decrypted: " + decompMsg + "\n");
-                    } else {
+                    }
+                    else {
                         msgField.append("Message Authentication failed");
                     }
 
