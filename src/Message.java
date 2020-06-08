@@ -33,7 +33,7 @@ public class Message{
     Payload payload;
     boolean signed = false;
     boolean symmetric = false;
-    //message byte sizes: 392 + g[392] + 8 + 392 + 2 + g[32] + 1 + 8 + [x+2]
+    //message byte sizes: 294 + g[294] + 8 + 294 + 2 + g[32] + 1 + 8 + [x+2]
 
     //no default constructor
 
@@ -96,9 +96,9 @@ public class Message{
         signature.signedMD = new byte[(int)si];
         System.arraycopy(fullMessage,index,signature.signedMD,0,si);
 
-        index -= 394;
-        byte[] keyBytes = new byte[392];
-        System.arraycopy(fullMessage,index,keyBytes,0,392);
+        index -= 296;
+        byte[] keyBytes = new byte[294];
+        System.arraycopy(fullMessage,index,keyBytes,0,294);
         signature.senderPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(keyBytes));
 
         index -= 8;
@@ -137,17 +137,17 @@ public class Message{
         si = (short)pl.length;
         byte[] pll = new byte[]{(byte)(si >> 8), (byte)si};
 
-        int len = 8+392+2+signature.signedMD.length+2+0+8+pl.length+2;
+        int len = 8+294+2+signature.signedMD.length+2+0+8+pl.length+2;
         byte[] output = new byte[len];
 
         System.arraycopy(longToBytes(signature.timestamp),0,output,0,8);
-        System.arraycopy(signature.senderPublicKey.getEncoded(),0,output,8,392);
-        System.arraycopy(signature.messageDigest,0,output,400,2);
-        System.arraycopy(signature.signedMD,0,output,402,signature.signedMD.length);
-        System.arraycopy(mdl,0,output,402+signature.signedMD.length,2);
-        System.arraycopy(longToBytes(payload.timestamp),0,output,404+signature.signedMD.length,8);
-        System.arraycopy(pl,0,output,412+signature.signedMD.length,pl.length);
-        System.arraycopy(pll,0,output,412+signature.signedMD.length+pl.length,2);
+        System.arraycopy(signature.senderPublicKey.getEncoded(),0,output,8,294);
+        System.arraycopy(signature.messageDigest,0,output,302,2);
+        System.arraycopy(signature.signedMD,0,output,304,signature.signedMD.length);
+        System.arraycopy(mdl,0,output,304+signature.signedMD.length,2);
+        System.arraycopy(longToBytes(payload.timestamp),0,output,306+signature.signedMD.length,8);
+        System.arraycopy(pl,0,output,314+signature.signedMD.length,pl.length);
+        System.arraycopy(pll,0,output,314+signature.signedMD.length+pl.length,2);
 
         byte[] cp_output = Encryption.compress(new String(output));
 
