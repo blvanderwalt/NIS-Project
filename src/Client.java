@@ -16,8 +16,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -27,7 +27,11 @@ import java.util.concurrent.ExecutorService;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -53,6 +57,8 @@ public class Client {
     X509CertificateHolder serverCert;
     X509CertificateHolder clientCert;
     private SecretKey sharedKey;
+    private byte[] init_vector;
+
     String serverAddress;
     ObjectInputStream input;
     ObjectOutputStream output;
@@ -61,7 +67,7 @@ public class Client {
     JTextArea msgField = new JTextArea(16, 50);
 
     // --- Takes server IP address and same port number to connect to each other --- //
-    public Client(String serverAddress) {
+    public Client(String serverAddress) throws NoSuchAlgorithmException {
         this.serverAddress = serverAddress;
         txtEnter.setEditable(false);
         msgField.setEditable(false);
@@ -71,10 +77,19 @@ public class Client {
 
         // --- generate public/private key pair --- //
         //TODO: assign pubKey and pvtKey [-]
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048); //size of RSA key - 2048
+        KeyPair pair = keyGen.generateKeyPair();
+
+        clientPvtKey = pair.getPrivate(); // returns PKCS#8 format
+        clientPubKey = pair.getPublic(); // returns X.509 format
+
+        byte[] publicByteArray = clientPubKey.getEncoded();
+
         //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
         SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
             new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
-            serverPubKey.getEncoded()
+            clientPubKey.getEncoded() //self-signed
         );
         X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
             new X500Name("CN=issuer"), //issuer
@@ -99,11 +114,18 @@ public class Client {
                 Message message = new Message(msg,clientPubKey,serverPubKey);
                 Authentication.sign(clientPvtKey,message);
                 byte[] msgBytes = message.toByteArray();
+
                 //TODO: encrypt msgBytes [-]
-                //encrypt message
+                byte[] init_vector = null; // get from Server
+                sharedKey = null; // get from Server
+                byte[] encryptedMsgBytes = null;
+
                 try {
-                    output.writeObject(msg);
-                } catch (Exception ex){
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, clientPubKey,msgBytes);
+                    output.writeInt(encryptedMsgBytes.length);
+                    output.write(encryptedMsgBytes);
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException | InvalidKeySpecException ex) {
+                    ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
                 }
                 txtEnter.setText("");
@@ -113,7 +135,7 @@ public class Client {
         });
     }
 
-    private void run() throws IOException, ClassNotFoundException {
+    private void run() throws IOException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, ClassNotFoundException, InvalidKeySpecException {
         try {
             Socket socket = new Socket(serverAddress, 59002);
             input = new ObjectInputStream(socket.getInputStream());
@@ -122,7 +144,7 @@ public class Client {
 
                 Object obj = input.readObject();
                 if (obj instanceof String) {
-                    String line = (String)obj;
+                    String line = (String) obj;
                     if (line.startsWith("SUBMITNAME")) {
                         //Send public Key
                         output.writeObject(clientPubKey);
@@ -166,13 +188,17 @@ public class Client {
                     }
 
                 }
-                else if (obj instanceof Message) {
-                    Message msg = (Message)obj;
-                    String encryptedMessage = msg.payload.plaintext;
+                else {
+                    byte[] msg = new byte[(int)obj];
+                    input.readFully(msg);
+                    String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
                     //TODO: decryption [-]
-                    byte[] dcMsg; //decrypted but still compressed message
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, clientPvtKey, clientPubKey, encryptedMessage);
+
+
+                    //TODO: decompress [x]
                     String decompMsg = Encryption.decompress(dcMsg);
                     Message newMsg = new Message(decompMsg);
 
