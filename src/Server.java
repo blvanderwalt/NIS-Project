@@ -5,20 +5,14 @@
 //    messages making use of other classes utilities
 //Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.FileInputStream;
-import java.io.DataInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.cert.X509Certificate;
+import java.security.SecureRandom;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -26,7 +20,9 @@ import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.awt.BorderLayout;
+import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -50,9 +46,12 @@ public class Server {
     private static PublicKey serverPubKey;
     private static PrivateKey serverPvtKey;
     private static PublicKey clientPubKey;
-    private static SecretKey sharedKey;
+    private static SecretKey sharedKey; // B
+    public static byte[] init_vector;
+
+
     private X509CertificateHolder clientCert;
-    private static X509CertificateHolder serverCert;
+    private static X509CertificateHolder serverCert; //B
 
     private static ObjectOutputStream defaultStream;
     private static ObjectOutputStream clientWriter;
@@ -119,10 +118,20 @@ public class Server {
                     return;
                 }
 
-                // get shared key
-                //create new shared key;
-                clientWriter.writeObject(sharedKey);
-                serverClient.sharedKey = sharedKey;
+                // Create sharedKey
+                KeyGenerator k_gen = KeyGenerator.getInstance("AES");
+                k_gen.init(128); // size of AES Key - 128
+                SecretKey shared_key = k_gen.generateKey();
+                sharedKey = shared_key;
+                // send shared key to client
+                serverClient.sharedKey = sharedKey; // CHeck whats up here
+
+                //Create initilization vector
+                SecureRandom random = new SecureRandom(); // generates random vector
+                byte[] init_vect = new byte[128/8]; // AES default block size = 128
+                random.nextBytes(init_vect);
+                IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+                serverClient.ivspec = ivspec;
 
                 // --- Show authentication complete --- //
                 serverClient.msgField.append("Client has joined the chat.\n");
@@ -130,17 +139,18 @@ public class Server {
 
                 // --- Read messages from client --- //
                 while (true) {
-                    Message input = (Message)in.readObject();
-                    if (input.payload.plaintext.startsWith("/quit")) {
-                        return;
-                    }
+                    byte[] input = new byte[in.readInt()];
+                    in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    //TODO: decrypt [-]
-                    byte[] dcMsg; //decrypted "input"
+                    byte[] init_vector = null;
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
+                            input);
+
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);
                     if (Authentication.authenticateMessage(msg)){
+                        if (input.payload.plaintext.startsWith("/quit")) { return; }
                         serverClient.msgField.append("Client decrypted: " + decmpMsg + "\n");
                     }
                     else {
