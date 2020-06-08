@@ -124,7 +124,7 @@ public class Client {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, clientPubKey,msgBytes);
                     output.writeInt(encryptedMsgBytes.length);
                     output.write(encryptedMsgBytes);
-                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException | InvalidKeySpecException ex) {
+                } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
                     ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
                 }
