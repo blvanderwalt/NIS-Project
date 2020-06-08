@@ -146,15 +146,20 @@ public class Server {
                 k_gen.init(128); // size of AES Key - 128
                 SecretKey shared_key = k_gen.generateKey();
                 sharedKey = shared_key;
-                clientWriter.writeObject(sharedKey); // send shared key to client
-                serverClient.sharedKey = sharedKey; // CHeck whats up here
 
-                //Create initilization vector
+                // TODO: Need to add encyrption here
+                // need to send this over encrypted
+                //clientWriter.writeObject(sharedKey); // send shared key to client
+                serverClient.sharedKey = sharedKey;
+
+                //Create initialization vector
                 SecureRandom random = new SecureRandom(); // generates random vector
                 byte[] init_vect = new byte[128/8]; // AES default block size = 128
                 random.nextBytes(init_vect);
                 IvParameterSpec ivspec = new IvParameterSpec(init_vect);
-                clientWriter.writeObject(init_vect); // send ivspec to client
+
+                //TODO: does IVspec need to be encrypted
+                //clientWriter.writeObject(init_vect); // send ivspec to client
                 serverClient.ivspec = ivspec;
 
                 // --- Show authentication complete --- //
@@ -167,8 +172,7 @@ public class Server {
                     in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, serverPubKey,
-                            new String(input));
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, new String(input));
 
                     String decmpMsg = Encryption.decompress(dcMsg);
                     Message msg = new Message(decmpMsg);

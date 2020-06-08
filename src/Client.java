@@ -116,12 +116,13 @@ public class Client {
                 Authentication.sign(clientPvtKey,message);
                 byte[] msgBytes = message.toByteArray();
 
-                //TODO: encrypt msgBytes [-]
+                // TODO: Create Own sharedKey // Or get SharedKey from initilization message from server
                 sharedKey = null; // get from Server
                 byte[] encryptedMsgBytes = null;
 
+                //TODO: encrypt msgBytes [-]
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, clientPubKey,msgBytes);
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, serverPubKey,msgBytes);
                     output.writeInt(encryptedMsgBytes.length);
                     output.write(encryptedMsgBytes);
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
@@ -197,8 +198,7 @@ public class Client {
                     String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, clientPubKey,
-                            encryptedMessage);
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, encryptedMessage);
 
 
                     String decompMsg = Encryption.decompress(dcMsg);
