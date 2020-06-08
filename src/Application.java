@@ -23,10 +23,37 @@ import javax.crypto.spec.IvParameterSpec;
 public class Application {
     public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException, BadPaddingException, IllegalBlockSizeException {
 
-        String Message = "gotcha";
-        System.out.printf("Unencrypted Message: %s\n", Message);
+        String Message = "This is SEGvSBARFBRERBUWVHBQERBUERBVEQRBIUQEQER" +
+                "QERNUEQRIUQERBQE " +
+                "QERBIUQERBERQ " +
+                "QEBONERQN " +
+                "ERQ " +
+                "NQERBI BRQBN" +
+                "QE RB" +
+                "QERUEVU ERQBUQEBEQRBQ" +
+                "NT BT" +
+                "QENQ BTN" +
+                "QEINBEIQ BINOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" +
+                "IIIIIIIIII IIIIIIIIIIIIIIIIIIIIIIIIIN" +
+                "   VVVVVVVVV VVVVVVVVVVVVVVVVVVVVVVVVVVERO56473890WRG;'" +
+                "4" +
+                "5H" +
+                "54H2" +
+                "542H" +
+                "54RH24HQ5HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH4H534Q43G45H452HB5RTBNWRNB" +
+                "5RN" +
+                "5TNR" +
+                "N" +
+                "RWTN" +
+                "YN" +
+                "WTRN" +
+                "TTR46524564TR51N465T1WR46H54486T5448651TR" +
+                "458645H64154Hnot a secret" +
+                "asfasdfafas" +
+                "asfasf";
+       // System.out.printf("Unencrypted Message: %s\n", Message);
 
-        System.out.printf("Bytes of OG Message %s\n", Arrays.toString(Message.getBytes()) );
+        //System.out.printf("Bytes of OG Message %s\n", Arrays.toString(Message.getBytes()) );
 
         KeyGenerator k_gen = KeyGenerator.getInstance("AES");
         k_gen.init(128); // size of AES Key - 128
@@ -45,18 +72,32 @@ public class Application {
         PrivateKey privateKey = pair.getPrivate(); // returns PKCS#8 format
         PublicKey publicKey = pair.getPublic(); // returns X.509 format
 
-        // contains sharedkey and init_vector
-        byte[][] encryptedOut = Encryption.fullEncryption(sKey, init_vect, ivspec, privateKey, publicKey, Message);
-        //encryptedOut[0] = bytes_sharedKey;
-        //encryptedOut[1] = init_vec;
-        //encryptedOut[2] = out_buffer;
+         //Use Full Encryption
+             byte[][] encryptedOut = Encryption.fullEncryption(sKey, init_vect, publicKey, Message);
+             //encryptedOut[0] = encryptedsharedKey;
+             //encryptedOut[1] = init_vec;
+             //encryptedOut[2] = out_buffer;
 
-        System.out.println("==========================================");
 
-        byte[] final_message = Encryption.fullDecryption(publicKey, encryptedOut[0], encryptedOut[1],
-                encryptedOut[2]);
-        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
-        String message = new String(final_message);
-        System.out.printf("Message: %s", message);
+
+             System.out.println("==========================================");
+
+             byte[] final_message = Encryption.fullDecryption(privateKey, encryptedOut[0], encryptedOut[1], encryptedOut[2]);
+             System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
+             String message = new String(final_message);
+             System.out.printf("Message: %s", message);
+
+
+
+//        byte[] encryptedOut = Encryption.encrypt(sKey, init_vect, privateKey, publicKey, Message.getBytes());
+//        System.out.println("==========================================");
+//
+//        byte[] final_message = Encryption.decrypt(sKey, init_vect, privateKey, new String(encryptedOut));
+//        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
+//        String message = new String(final_message);
+//        System.out.printf("Message: %s", message);
+
     }
+
+
 }

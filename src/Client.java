@@ -114,10 +114,14 @@ public class Client {
                 Message message = new Message(msg,clientPubKey,serverPubKey);
                 Authentication.sign(clientPvtKey,message);
                 byte[] msgBytes = message.toByteArray();
+
+                // TODO: Create Own sharedKey // Or get SharedKey from initilization message from server
+                sharedKey = null; // get from Server
                 byte[] encryptedMsgBytes = null;
 
+                //TODO: encrypt msgBytes [-]
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, clientPubKey,msgBytes);
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, serverPubKey,msgBytes);
                     output.writeInt(encryptedMsgBytes.length);
                     output.write(encryptedMsgBytes);
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
@@ -125,7 +129,6 @@ public class Client {
                     System.out.println("Error Sending Message Object");
                 }
                 txtEnter.setText("");
-
             }
 
         });
@@ -157,6 +160,7 @@ public class Client {
                         X509CertificateHolder servCert = (X509CertificateHolder)input.readObject();
                         boolean authenticate = true;
                         // --- Authenticate Server --- //
+                        // TODO: authentication [x]
                         authenticate = Authentication.authenticateSender(servCert);
                         if (authenticate) {
                             output.writeObject("accepted");
@@ -193,11 +197,9 @@ public class Client {
                     String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
-                    //TODO: decryption [-]
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, clientPvtKey, clientPubKey, encryptedMessage);
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, encryptedMessage);
 
 
-                    //TODO: decompress [x]
                     String decompMsg = Encryption.decompress(dcMsg);
                     Message newMsg = new Message(decompMsg);
 
