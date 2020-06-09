@@ -55,14 +55,14 @@ public class ServerClient {
                 //TODO: compress [-] ~ needs both public keys + server private key
                 Message message = new Message(msg,serverUKey,clientUKey);
                 Authentication.sign(serverRKey,message);
-                byte[] msgBytes = message.toByteArray(); // toByteArray Compresses Right??
-                byte[] encryptedMsgBytes = null;
+                byte[] msgBytes = message.toByteArray();
+                byte[][] encryptedMsgBytes = null;
 
                 //TODO: Add encryptedMessage to Message class and send it
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), serverRKey, serverUKey,msgBytes);
-                    output.writeInt(encryptedMsgBytes.length);
-                    output.write(encryptedMsgBytes); // Send encryptedMessage
+                    encryptedMsgBytes = Encryption.fullEncryption(sharedKey.getEncoded(), ivspec.getIV(), serverUKey,msgBytes);
+                    output.writeInt(encryptedMsgBytes[2].length);
+                    output.write(encryptedMsgBytes[2]); // Send encryptedMessage
                     txtEnter.setText("");
                 } catch (Exception ex){
                     System.out.println("Error Sending Message Object");

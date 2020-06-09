@@ -55,7 +55,7 @@ public class Encryption {
         return signed_hash;
     }
 
-    public static byte[] encrypt(SecretKey secretKey, byte[] init_vect, PrivateKey privateKey,
+    public static byte[] encrypt(SecretKey secretKey, byte[] init_vect,
                                  PublicKey publicKey, byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException{
 
         //SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
@@ -69,88 +69,123 @@ public class Encryption {
         byte[] bytes_sharedKey = cipher.doFinal(secretKey.getEncoded());
         SecretKey sKey = new SecretKeySpec(bytes_sharedKey, 0, bytes_sharedKey.length, "AES");
         */
-
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 
         // Encrypt File content using AES key
-        Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        ci.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
+        Cipher cipherAES = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipherAES.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
+        byte[] AES_encryptedPayload = cipherAES.doFinal(message);
+
+        byteOut.write(AES_encryptedPayload);
+
+//        Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+//        cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
+//        byte[] bytes_sharedKey = cipherRSA.doFinal(secretKey.getEncoded());
+
+
 
         ArrayList<byte[]> out = new ArrayList<byte[]>();
 
-        byte[] input_buffer = new byte[1024];
-        int input_len = 0;
-        ByteArrayInputStream in = new ByteArrayInputStream(message);
-
-        // in.read reads input_buffer.length # of bytes; returned as int
-        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
-            do {
-                byte[] out_buffer = ci.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
-                if (out_buffer != null) {
-                    out.add(out_buffer);
-                }
-            } while ((input_len = in.read(input_buffer)) != -1);
-        }
-        byte[] AES_encryptedPayload = ci.doFinal();
+//        byte[] input_buffer = new byte[1024];
+////        int input_len = 0;
+////        ByteArrayInputStream in = new ByteArrayInputStream(message);
+////
+////        // in.read reads input_buffer.length # of bytes; returned as int
+////        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
+////            do {
+////                byte[] out_buffer = ci.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
+////                if (out_buffer != null) {
+////                    out.add(out_buffer);
+////                }
+////            } while ((input_len = in.read(input_buffer)) != -1);
+////        }
+////        byte[] AES_encryptedPayload = ci.doFinal();
 
         out.add(AES_encryptedPayload);
 
 
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] bytes_sharedKey = cipher.doFinal(secretKey.getEncoded());
-
-        System.out.println("shared: " + Arrays.toString(bytes_sharedKey));
-
-        System.out.println(Arrays.toString(out.get(0)));
-        System.out.printf("Size: %d\n", out.size());
-        System.out.println(Arrays.toString(AES_encryptedPayload));
 
         //TODO: Concatenate AES_encryptedPayload ++ bytes_sharedKey
         //byte[] out = AES_encryptedPayload ++ bytes_sharedKey;
         return AES_encryptedPayload;
     }
 
-    public static byte[] decrypt(SecretKey secretKey, byte[] init_vect, PrivateKey privateKey, String message) throws IOException, NoSuchPaddingException,
+    public static byte[] decrypt(SecretKey secretKey, byte[] init_vect, PrivateKey privateKey, byte[] message) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException,
             InvalidAlgorithmParameterException {
 
         //SecretKey originalKey = new SecretKeySpec(encodedKey, 0, encodedKey.length, "AES");
         IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
-        Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] shared_key = cipher.doFinal(message.getBytes()); //retrieves secret AES key
+        Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipherRSA.init(Cipher.DECRYPT_MODE, privateKey);
+        //byte[] shared_key = cipherRSA.doFinal(message.getBytes()); //retrieves secret AES key
 
-        Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        SecretKeySpec secret_key = new SecretKeySpec(shared_key, "AES");
-        ci.init(Cipher.DECRYPT_MODE, secret_key, ivspec);
+        Cipher cipherAES = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        //SecretKeySpec secret_key = new SecretKeySpec(secretKey.getEncoded(), "AES");
+        cipherAES.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
+        System.out.println(message.length);
+        byte[] out_buffer = cipherAES.doFinal(message);
 
-        ArrayList<byte[]> out = new ArrayList<byte[]>();
 
-        byte[] input_buffer = new byte[1024];
-        input_buffer = message.getBytes();
+//        ArrayList<byte[]> out = new ArrayList<byte[]>();
+//
+//        byte[] input_buffer = new byte[1024];
+//        input_buffer = message.getBytes();
+//
+//        int input_len = 0;
+//        ByteArrayInputStream in = new ByteArrayInputStream(input_buffer);
+//
+//        // in.read reads input_buffer.length # of bytes; returned as int
+//        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
+//            do {
+//                byte[] out_buffer = ci.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
+//                if (out_buffer != null) {
+//                    out.add(out_buffer);
+//                }
+//            } while ((input_len = in.read(input_buffer)) != -1);
+//        }
+//        byte[] out_buffer = ci.doFinal();
+//
+//        out.add(out_buffer);
 
-        int input_len = 0;
-        ByteArrayInputStream in = new ByteArrayInputStream(input_buffer);
-
-        // in.read reads input_buffer.length # of bytes; returned as int
-        if ((input_len = in.read(input_buffer)) != -1) { // if =-1, then end of stream is found
-            do {
-                byte[] out_buffer = ci.update(input_buffer, 0, input_len); //Continues a multiple-part encryption
-                if (out_buffer != null) {
-                    out.add(out_buffer);
-                }
-            } while ((input_len = in.read(input_buffer)) != -1);
-        }
-        byte[] out_buffer = ci.doFinal();
-
-        out.add(out_buffer);
-
-        System.out.println(Arrays.toString(out.get(0)));
-        System.out.println(Arrays.toString(out_buffer));
 
         return out_buffer;
     }
+
+    public static byte[] getSharedKey(PrivateKey pvtKey, byte[] encryptedMessage) throws NoSuchPaddingException,
+            NoSuchAlgorithmException,
+            InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
+        Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipherRSA.init(Cipher.DECRYPT_MODE, pvtKey);
+
+        ByteArrayInputStream bIn = new ByteArrayInputStream(encryptedMessage);
+        byte[] encryptedSharedKey = new byte[256]; // Is this fixed??
+        bIn.read(encryptedSharedKey);
+
+
+        byte[] shared_key = cipherRSA.doFinal(encryptedSharedKey); //retrieves secret AES key
+        return shared_key;
+    }
+
+    public static byte[] getIV(PrivateKey pvtKey, byte[] encryptedMessage) throws NoSuchPaddingException,
+            NoSuchAlgorithmException,
+            InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException {
+
+        Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
+        cipherRSA.init(Cipher.DECRYPT_MODE, pvtKey);
+
+        ByteArrayInputStream bIn = new ByteArrayInputStream(encryptedMessage);
+        bIn.readNBytes(256); // skip the shared_key
+
+        byte[] init_v = new byte[16]; // get IV bytes
+        bIn.read(init_v);
+
+
+        byte[] init_vector = cipherRSA.doFinal(init_v); //retrieves secret AES key
+        return init_vector;
+    }
+
 
     /**
      * Process: RSA encryption has a very low limit for data that can be encrypted. therefore to encrypt larger sets of
@@ -161,19 +196,21 @@ public class Encryption {
      *
      * @return the encrypted sharedKey byte array.
      */
-    public static byte[][] fullEncryption(SecretKey sKey, byte[] init_vect, PublicKey publicKey, String message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
+    public static byte[][] fullEncryption(byte[] shared_key, byte[] init_vect, PublicKey publicKey, byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IOException, BadPaddingException, IllegalBlockSizeException, InvalidAlgorithmParameterException {
 
         IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+        SecretKey originalKey = new SecretKeySpec(shared_key, 0, shared_key.length, "AES");
+
 
         Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] bytes_sharedKey = cipher.doFinal(sKey.getEncoded());
+        byte[] bytes_sharedKey = cipher.doFinal(shared_key);
 
-        System.out.println("Unencrypted: " + Arrays.toString(sKey.getEncoded()));
+        System.out.println("Unencrypted: " + Arrays.toString(shared_key));
 
         // Encrypt File content using AES key
         Cipher ci = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        ci.init(Cipher.ENCRYPT_MODE, sKey, ivspec);
+        ci.init(Cipher.ENCRYPT_MODE, originalKey, ivspec);
 
 //        ArrayList<byte[]> out = new ArrayList<byte[]>();
 //
@@ -194,7 +231,7 @@ public class Encryption {
 //            } while ((input_len = in.read(input_buffer)) != -1);
 //        }
 
-        byte[] out_buffer = ci.doFinal(message.getBytes());
+        byte[] out_buffer = ci.doFinal(message);
         //System.out.printf("Out buffer: %s\n", Arrays.toString(out_buffer));
 
         //out.add(out_buffer);
@@ -313,6 +350,7 @@ public class Encryption {
             throw new RuntimeException ("Failed to unzip message", e);
         }
     }
+
 
 
 }

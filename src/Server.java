@@ -20,6 +20,7 @@ import java.awt.BorderLayout;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -149,7 +150,7 @@ public class Server {
 
                 // TODO: Need to add encyrption here
                 // need to send this over encrypted
-                //clientWriter.writeObject(sharedKey); // send shared key to client
+                clientWriter.writeObject(sharedKey); // send shared key to client
                 serverClient.sharedKey = sharedKey;
 
                 //Create initialization vector
@@ -158,8 +159,8 @@ public class Server {
                 random.nextBytes(init_vect);
                 IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
-                //TODO: does IVspec need to be encrypted
-                //clientWriter.writeObject(init_vect); // send ivspec to client
+                //TODO: Chia - Does Client handle this incoming ??
+                clientWriter.writeObject(init_vect); // send ivspec to client
                 serverClient.ivspec = ivspec;
 
                 // --- Show authentication complete --- //
@@ -172,9 +173,15 @@ public class Server {
                     in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, init_vector, serverPvtKey, new String(input));
+
+                    byte[] decrypted_sharedKey = Encryption.getSharedKey(serverPvtKey, input);
+                    SecretKey originalKey = new SecretKeySpec(decrypted_sharedKey, 0, decrypted_sharedKey.length, "AES");
+                    byte[] dcMsg = Encryption.decrypt(originalKey, init_vector, serverPvtKey, input);
 
                     String decmpMsg = Encryption.decompress(dcMsg);
+                    System.out.printf("Final Decompressed Message: %s", decmpMsg);
+                    System.exit(0);
+
                     Message msg = new Message(decmpMsg);
                     if (msg.payload.plaintext.startsWith("/quit")) { return; }
                     if (Authentication.authenticateMessage(msg)){

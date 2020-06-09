@@ -18,10 +18,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.awt.event.ActionEvent;
@@ -46,8 +43,6 @@ import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
 import java.math.BigInteger;
-import java.util.GregorianCalendar;
-import java.util.Locale;
 
 
 public class Client {
@@ -76,7 +71,6 @@ public class Client {
         UI.pack();
 
         // --- generate public/private key pair --- //
-        //TODO: assign pubKey and pvtKey [-]
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048); //size of RSA key - 2048
         KeyPair pair = keyGen.generateKeyPair();
@@ -86,7 +80,6 @@ public class Client {
 
         byte[] publicByteArray = clientPubKey.getEncoded();
 
-        //TODO: create certificate [-] ~ needs pubKey as a PublicKey object
         SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
             new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
             clientPubKey.getEncoded() //self-signed
@@ -113,17 +106,18 @@ public class Client {
                 // --- Compress & Encrypt --- //
                 Message message = new Message(msg,clientPubKey,serverPubKey);
                 Authentication.sign(clientPvtKey,message);
+                // Get compressed concatenated payload and signature components
                 byte[] msgBytes = message.toByteArray();
 
                 // TODO: Create Own sharedKey // Or get SharedKey from initilization message from server
-                sharedKey = null; // get from Server
-                byte[] encryptedMsgBytes = null;
+                byte[][] encryptedMsgBytes;
 
                 //TODO: encrypt msgBytes [-]
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, clientPvtKey, serverPubKey,msgBytes);
-                    output.writeInt(encryptedMsgBytes.length);
-                    output.write(encryptedMsgBytes);
+                    encryptedMsgBytes = Encryption.fullEncryption(sharedKey.getEncoded(), init_vector, serverPubKey,msgBytes);
+                    output.writeInt(encryptedMsgBytes[2].length);
+                    output.write(encryptedMsgBytes[2]);
+                    System.out.println(Arrays.toString(encryptedMsgBytes[2]));
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
                     ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
@@ -197,10 +191,12 @@ public class Client {
                     String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, encryptedMessage);
+                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, encryptedMessage.getBytes());
 
 
                     String decompMsg = Encryption.decompress(dcMsg);
+                    System.out.printf("Final Decompressed Message: %s", decompMsg);
+                    System.exit(0);
                     Message newMsg = new Message(decompMsg);
 
                     // --- Authenticate Message --- //
