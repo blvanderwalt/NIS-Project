@@ -3,12 +3,12 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.X509CertificateStructure;
 
-class Signer implements ContentSigner{
+class OurSigner implements ContentSigner{
      AlgorithmIdentifier ai;
      byte [] key;
      java.io.ByteArrayOutputStream os;
 
-     public Signer(AlgorithmIdentifier ai, byte[] key){
+     public OurSigner(AlgorithmIdentifier ai, byte[] key){
          this.ai = ai;
          this.key = key;
          this.os = new java.io.ByteArrayOutputStream();

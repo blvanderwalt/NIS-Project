@@ -83,7 +83,7 @@ public class Server {
                 subjectPubKeyInfo //subject's public key info: algorithm and public key
         );
         serverCert = certBuild.build(
-                new Signer(subjectPubKeyInfo.getAlgorithm(), serverPubKey.getEncoded())
+                new OurSigner(subjectPubKeyInfo.getAlgorithm(), serverPubKey.getEncoded())
         );
 
         try (ServerSocket listener = new ServerSocket(59002)) {
