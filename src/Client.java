@@ -101,7 +101,7 @@ public class Client {
             subjectPubKeyInfo //subject's public key info: algorithm and public key
         );
         clientCert = certBuild.build(
-            new Signer(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
+            new OurSigner(subjectPubKeyInfo.getAlgorithm(), clientPubKey.getEncoded())
         );
 
         // --- Send message and print it on screen --- //
