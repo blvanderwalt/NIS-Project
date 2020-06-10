@@ -23,7 +23,7 @@ public class ServerClient {
     PublicKey serverUKey;
     PrivateKey serverRKey;
     PublicKey clientUKey;
-    IvParameterSpec ivspec;
+    byte [] ivspec;
 
 
     Scanner input;
@@ -58,9 +58,10 @@ public class ServerClient {
                 byte[] encryptedMsgBytes;
 
                 try {
-                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec.getIV(), clientUKey,msgBytes);
-                    output.writeInt(encryptedMsgBytes.length);
-                    output.write(encryptedMsgBytes); // Send encryptedMessage
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec, clientUKey,msgBytes);
+                    //output.writeInt(encryptedMsgBytes.length);
+                    //output.write(encryptedMsgBytes); // Send encryptedMessage
+                    output.writeObject(encryptedMsgBytes);
                     txtEnter.setText("");
                 } catch (Exception ex){
                     System.out.println("Error Sending Message Object");

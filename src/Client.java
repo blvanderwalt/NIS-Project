@@ -29,6 +29,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
@@ -112,8 +113,9 @@ public class Client {
 
                 try {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, serverPubKey,msgBytes);
-                    output.writeInt(encryptedMsgBytes.length);
-                    output.write(encryptedMsgBytes);
+                    //output.writeInt(encryptedMsgBytes.length);
+                    //output.write(encryptedMsgBytes);
+                    output.writeObject(encryptedMsgBytes);
                     System.out.println(Arrays.toString(encryptedMsgBytes));
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
                     ex.printStackTrace();
@@ -130,69 +132,71 @@ public class Client {
             Socket socket = new Socket(serverAddress, 59002);
             output = new ObjectOutputStream(socket.getOutputStream());
             input = new ObjectInputStream(socket.getInputStream());
-            while (true) {
 
-                Object obj = input.readObject(); //TODO CHIA - Error here
-                if (obj instanceof String) {
-                    String line = (String) obj;
-                    if (line.startsWith("SUBMITNAME")) {
-                        //Send public Key
-                        output.writeObject(clientPubKey);
-                    }
-
-                    line = (String)input.readObject();
-                    if (line.startsWith("SENDCERT")) {
-                        output.writeObject(clientCert);
-                    }
-                    line = (String)input.readObject();
-                    if (line.startsWith("NAMEACCEPTED")) {
-                        this.UI.setTitle("Encrypto - Client");
-                        serverPubKey = (PublicKey)input.readObject();
-                        X509CertificateHolder servCert = (X509CertificateHolder)input.readObject();
-                        boolean authenticate = true;
-                        // --- Authenticate Server --- //
-                        authenticate = Authentication.authenticateSender(servCert);
-                        if (authenticate) {
-                            output.writeObject("accepted");
-                            // TODO: Chia Take out sharedKey and init_vector
-                            // they are sent through the encrypted Messae
-                            sharedKey = (SecretKey) input.readObject();
-                            init_vector = (byte[]) input.readObject();
-                            ivspec = new IvParameterSpec(init_vector);
-                            msgField.append("Joined chat with Server\n");
-                            txtEnter.setEditable(true);
-                        }
-                        else {
-                            output.writeObject("declined");
-                            msgField.append("Server identity unknown, closing services...\n");
-                            try {
-                                TimeUnit.SECONDS.sleep(1);
-                                msgField.append("3...");
-                                TimeUnit.SECONDS.sleep(1);
-                                msgField.append("2...");
-                                TimeUnit.SECONDS.sleep(1);
-                                msgField.append("1...");
-                                TimeUnit.SECONDS.sleep(1);
-                                return;
-                            } catch (Exception e) {
-                                return;
-                            }
-                        }
-
-
-                    }
-
+            Object obj = input.readObject();
+            if (obj instanceof String) {
+                String line = (String) obj;
+                if (line.startsWith("SUBMITNAME")) {
+                    //Send public Key
+                    output.writeObject(clientPubKey);
                 }
-                else {
-                    byte[] msg = new byte[(int)obj];
-                    input.readFully(msg);
-                    String encryptedMessage = new String(msg);
-                    msgField.append("Server encrypted: " + encryptedMessage + "\n");
+
+                line = (String) input.readObject();
+                if (line.startsWith("SENDCERT")) {
+                    output.writeObject(clientCert);
+                }
+                line = (String) input.readObject();
+                if (line.startsWith("NAMEACCEPTED")) {
+                    this.UI.setTitle("Encrypto - Client");
+                    serverPubKey = (PublicKey) input.readObject();
+                    X509CertificateHolder servCert = (X509CertificateHolder) input.readObject();
+                    boolean authenticate = true;
+                    // --- Authenticate Server --- //
+                    authenticate = Authentication.authenticateSender(servCert);
+                    if (authenticate) {
+                        output.writeObject("accepted");
+
+                        // --- get shared key and init vector --- //
+                        byte [] sKey = (byte[]) input.readObject();
+                        sKey = Encryption.decrypt(clientPvtKey, sKey);
+                        sharedKey = new SecretKeySpec(sKey,0,sKey.length,"AES");
+                        byte [] iVec = (byte[]) input.readObject();
+                        init_vector = Encryption.decrypt(clientPvtKey, iVec);
+
+                        msgField.append("Joined chat with Server\n");
+                        txtEnter.setEditable(true);
+                    } else {
+                        output.writeObject("declined");
+                        msgField.append("Server identity unknown, closing services...\n");
+                        try {
+                            TimeUnit.SECONDS.sleep(1);
+                            msgField.append("3...");
+                            TimeUnit.SECONDS.sleep(1);
+                            msgField.append("2...");
+                            TimeUnit.SECONDS.sleep(1);
+                            msgField.append("1...");
+                            TimeUnit.SECONDS.sleep(1);
+                            return;
+                        } catch (Exception e) {
+                            return;
+                        }
+                    }
+                }
+            }
+            while (true) {
+                    //int n = input.readInt();
+                    //byte[] msg = new byte[n];
+                    //input.readFully(msg);
+                    byte [] msg = (byte[]) input.readObject();
+                    //String encryptedMessage = new String(msg);
+                    msgField.append("Server encrypted: " + msg + "\n");
+
                     // --- Decompression & Decryption --- //
-                    byte[] dcMsg = Encryption.decrypt(clientPvtKey, encryptedMessage.getBytes());
+                    byte[] dcMsg = Encryption.decrypt(clientPvtKey, msg);
 
                     String decompMsg = Encryption.decompress(dcMsg);
                     System.out.printf("Final Decompressed Message: %s", decompMsg);
+
                     Message newMsg = new Message(decompMsg);
 
                     // --- Authenticate Message --- //
@@ -204,7 +208,6 @@ public class Client {
                     }
 
 
-                }
             }
         } finally {
             UI.setVisible(false);
