@@ -4,3 +4,4 @@ bin
 
 #Ignored Files
 src/*.class
+*.iml
