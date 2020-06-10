@@ -24,10 +24,10 @@ import javax.crypto.spec.SecretKeySpec;
 public class Application {
     public static void main(String[] args) throws IOException, CertificateException, NoSuchAlgorithmException, UnrecoverableKeyException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, NoSuchProviderException, KeyStoreException, BadPaddingException, IllegalBlockSizeException {
 
-        String Message = "This is a secret message";
+        String Message = "This is a secret message -- Just double checking";
         System.out.printf("Unencrypted Message: %s\n", Message);
 
-        //System.out.printf("Bytes of OG Message %s\n", Arrays.toString(Message.getBytes()) );
+        System.out.printf("Bytes of OG Message %s\n", Arrays.toString(Message.getBytes()) );
 
         KeyGenerator k_gen = KeyGenerator.getInstance("AES");
         k_gen.init(128); // size of AES Key - 128
@@ -46,42 +46,23 @@ public class Application {
         PrivateKey privateKey = pair.getPrivate(); // returns PKCS#8 format
         PublicKey publicKey = pair.getPublic(); // returns X.509 format
 
-         //Use Full Encryption                                               // there public key
-             byte[][] encryptedOut = Encryption.fullEncryption(sKey.getEncoded(), init_vect, publicKey, Message.getBytes());
-             //encryptedOut[0] = encryptedsharedKey;
-             //encryptedOut[1] = init_vec;
-             //encryptedOut[2] = out_buffer;
+
+        // AES key encrypted with the RSA private key at the beginning followed by the initialization vector,
+        // and the encrypted file data itself
+        byte[] encryptedOut = Encryption.encrypt(sKey, init_vect, publicKey, Message.getBytes());
+        System.out.println("==========================================");
+
+        //byte[] sK = Encryption.getSharedKey(privateKey, encryptedOut);
+        //SecretKey generatedKey = new SecretKeySpec(sK, 0, sK.length, "AES");
+
+        //byte[] IV = Encryption.getIV(privateKey, encryptedOut);
 
 
+        byte[] final_message = Encryption.decrypt(privateKey, encryptedOut);
+        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
 
-             System.out.println("==========================================");
-
-             byte[] final_message = Encryption.decrypt(sKey, init_vect, privateKey,encryptedOut[2]);
-             System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
-             String message = new String(final_message);
-             System.out.printf("Message: %s", message);
-
-
-
-
-//        byte[] encryptedOut = Encryption.encrypt(sKey, init_vect, publicKey, Message.getBytes());
-//        System.out.println("==========================================");
-//
-//        System.out.println(encryptedOut.length);
-//
-//        byte[] sK = Encryption.getSharedKey(privateKey, encryptedOut);
-//        SecretKey generatedKey = new SecretKeySpec(sK, 0, sK.length, "AES");
-//
-//        byte[] IV = Encryption.getIV(privateKey, encryptedOut);
-//
-//        System.out.println(encryptedOut.length);
-//
-//        byte[] final_message = Encryption.decrypt(generatedKey, IV, privateKey, new String(encryptedOut));
-//        System.out.printf("Bytes of NEW Message %s\n", Arrays.toString(final_message));
-//
-//
-//        String message = new String(final_message);
-//        System.out.printf("Message: %s", message);
+        String message = new String(final_message);
+        System.out.printf("Message: %s", message);
 
     }
 

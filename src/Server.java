@@ -148,8 +148,7 @@ public class Server {
                 SecretKey shared_key = k_gen.generateKey();
                 sharedKey = shared_key;
 
-                // TODO: Need to add encyrption here
-                // need to send this over encrypted
+                // TODO: CHIA can't send shared Key when its unencrypted - gets send in the encryptedPayload
                 clientWriter.writeObject(sharedKey); // send shared key to client
                 serverClient.sharedKey = sharedKey;
 
@@ -159,7 +158,6 @@ public class Server {
                 random.nextBytes(init_vect);
                 IvParameterSpec ivspec = new IvParameterSpec(init_vect);
 
-                //TODO: Chia - Does Client handle this incoming ??
                 clientWriter.writeObject(init_vect); // send ivspec to client
                 serverClient.ivspec = ivspec;
 
@@ -173,17 +171,16 @@ public class Server {
                     in.readFully(input);
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
-
-                    byte[] decrypted_sharedKey = Encryption.getSharedKey(serverPvtKey, input);
-                    SecretKey originalKey = new SecretKeySpec(decrypted_sharedKey, 0, decrypted_sharedKey.length, "AES");
-                    byte[] dcMsg = Encryption.decrypt(originalKey, init_vector, serverPvtKey, input);
+                    byte[] dcMsg = Encryption.decrypt(serverPvtKey, input);
 
                     String decmpMsg = Encryption.decompress(dcMsg);
                     System.out.printf("Final Decompressed Message: %s", decmpMsg);
-                    System.exit(0);
 
                     Message msg = new Message(decmpMsg);
-                    if (msg.payload.plaintext.startsWith("/quit")) { return; }
+                    if (msg.payload.plaintext.startsWith("/quit")) {
+                        System.out.println("Bye Bye");
+                        return;
+                    }
                     if (Authentication.authenticateMessage(msg)){
                         serverClient.msgField.append("Client decrypted: " + msg.payload.plaintext + "\n");
                     }

@@ -108,16 +108,13 @@ public class Client {
                 Authentication.sign(clientPvtKey,message);
                 // Get compressed concatenated payload and signature components
                 byte[] msgBytes = message.toByteArray();
+                byte[] encryptedMsgBytes;
 
-                // TODO: Create Own sharedKey // Or get SharedKey from initilization message from server
-                byte[][] encryptedMsgBytes;
-
-                //TODO: encrypt msgBytes [-]
                 try {
-                    encryptedMsgBytes = Encryption.fullEncryption(sharedKey.getEncoded(), init_vector, serverPubKey,msgBytes);
-                    output.writeInt(encryptedMsgBytes[2].length);
-                    output.write(encryptedMsgBytes[2]);
-                    System.out.println(Arrays.toString(encryptedMsgBytes[2]));
+                    encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, serverPubKey,msgBytes);
+                    output.writeInt(encryptedMsgBytes.length);
+                    output.write(encryptedMsgBytes);
+                    System.out.println(Arrays.toString(encryptedMsgBytes));
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
                     ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
@@ -135,7 +132,7 @@ public class Client {
             input = new ObjectInputStream(socket.getInputStream());
             while (true) {
 
-                Object obj = input.readObject();
+                Object obj = input.readObject(); //TODO CHIA - Error here
                 if (obj instanceof String) {
                     String line = (String) obj;
                     if (line.startsWith("SUBMITNAME")) {
@@ -154,10 +151,11 @@ public class Client {
                         X509CertificateHolder servCert = (X509CertificateHolder)input.readObject();
                         boolean authenticate = true;
                         // --- Authenticate Server --- //
-                        // TODO: authentication [x]
                         authenticate = Authentication.authenticateSender(servCert);
                         if (authenticate) {
                             output.writeObject("accepted");
+                            // TODO: Chia Take out sharedKey and init_vector
+                            // they are sent through the encrypted Messae
                             sharedKey = (SecretKey) input.readObject();
                             init_vector = (byte[]) input.readObject();
                             ivspec = new IvParameterSpec(init_vector);
@@ -191,12 +189,10 @@ public class Client {
                     String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + encryptedMessage + "\n");
                     // --- Decompression & Decryption --- //
-                    byte[] dcMsg = Encryption.decrypt(sharedKey, ivspec.getIV(), clientPvtKey, encryptedMessage.getBytes());
-
+                    byte[] dcMsg = Encryption.decrypt(clientPvtKey, encryptedMessage.getBytes());
 
                     String decompMsg = Encryption.decompress(dcMsg);
                     System.out.printf("Final Decompressed Message: %s", decompMsg);
-                    System.exit(0);
                     Message newMsg = new Message(decompMsg);
 
                     // --- Authenticate Message --- //
