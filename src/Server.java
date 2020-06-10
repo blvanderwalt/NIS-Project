@@ -69,7 +69,6 @@ public class Server {
         serverPvtKey = pair.getPrivate(); // returns PKCS#8 format
         serverPubKey = pair.getPublic(); // returns X.509 format
 
-        //TODO: create certificate [x]
         SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
                 new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
                 serverPubKey.getEncoded()
@@ -142,33 +141,37 @@ public class Server {
                     return;
                 }
 
-                // Create sharedKey
+                // --- Create sharedKey --- //
                 KeyGenerator k_gen = KeyGenerator.getInstance("AES");
                 k_gen.init(128); // size of AES Key - 128
                 SecretKey shared_key = k_gen.generateKey();
                 sharedKey = shared_key;
-
-                // TODO: CHIA can't send shared Key when its unencrypted - gets send in the encryptedPayload
-                clientWriter.writeObject(sharedKey); // send shared key to client
                 serverClient.sharedKey = sharedKey;
 
-                //Create initialization vector
+                // --- Create initialization vector --- //
                 SecureRandom random = new SecureRandom(); // generates random vector
                 byte[] init_vect = new byte[128/8]; // AES default block size = 128
                 random.nextBytes(init_vect);
                 IvParameterSpec ivspec = new IvParameterSpec(init_vect);
+                serverClient.ivspec = init_vect;
+                init_vector = init_vect;
 
-                clientWriter.writeObject(init_vect); // send ivspec to client
-                serverClient.ivspec = ivspec;
+                // --- Send key and vector to Client --- //
+                byte [] sKey = sharedKey.getEncoded();
+                clientWriter.writeObject(Encryption.encrypt(sharedKey, init_vector, clientPubKey,sKey));
+                clientWriter.writeObject(Encryption.encrypt(sharedKey, init_vector, clientPubKey, init_vect));
 
                 // --- Show authentication complete --- //
                 serverClient.msgField.append("Client has joined the chat.\n");
                 serverClient.txtEnter.setEditable(true);
 
+
                 // --- Read messages from client --- //
                 while (true) {
-                    byte[] input = new byte[in.readInt()];
-                    in.readFully(input);
+                    //int n = in.readInt();
+                    //byte[] input = new byte[n];
+                   // in.readFully(input);
+                    byte [] input = (byte[]) in.readObject();
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
                     // --- Decrypt & Decompress input --- //
                     byte[] dcMsg = Encryption.decrypt(serverPvtKey, input);
@@ -178,6 +181,7 @@ public class Server {
 
                     Message msg = new Message(decmpMsg);
                     if (msg.payload.plaintext.startsWith("/quit")) {
+                        serverClient.msgField.append("Client is leaving");
                         System.out.println("Bye Bye");
                         return;
                     }
@@ -198,8 +202,9 @@ public class Server {
                     clientWriter = null;
                 }
                 if (clientPubKey != null) {
-                    System.out.println("Client is leaving");
+                    System.out.println("Client is leaving\n");
                     clientPubKey = null;
+                    serverClient.txtEnter.setEditable(false);
                 }
                 try {
                     socket.close();
