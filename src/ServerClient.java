@@ -2,17 +2,12 @@
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
-import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.util.Scanner;
 import java.awt.BorderLayout;
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -25,8 +20,6 @@ public class ServerClient {
     PublicKey clientUKey;
     byte [] ivspec;
 
-
-    Scanner input;
     ObjectOutputStream output;
     JFrame UI = new JFrame("Encrypto - Server");
     JTextField txtEnter = new JTextField(50);
@@ -56,11 +49,9 @@ public class ServerClient {
                 Authentication.sign(serverRKey,message);
                 byte[] msgBytes = message.toByteArray();
                 byte[] encryptedMsgBytes;
-
                 try {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, ivspec, clientUKey,msgBytes);
-                    //output.writeInt(encryptedMsgBytes.length);
-                    //output.write(encryptedMsgBytes); // Send encryptedMessage
+                    // --- Send to Client --- //
                     output.writeObject(encryptedMsgBytes);
                     txtEnter.setText("");
                 } catch (Exception ex){

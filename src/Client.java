@@ -6,21 +6,12 @@
 //Authors:  Chiadika Emeruem, Ryan McCarlie, Ceara Mullins, Brent van der Walt
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.FileInputStream;
-import java.io.DataInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.BorderLayout;
@@ -28,10 +19,8 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -53,7 +42,6 @@ public class Client {
     X509CertificateHolder clientCert;
     private SecretKey sharedKey;
     private byte[] init_vector;
-    private IvParameterSpec ivspec;
 
     String serverAddress;
     ObjectInputStream input;
@@ -71,7 +59,7 @@ public class Client {
         UI.getContentPane().add(new JScrollPane(msgField), BorderLayout.CENTER);
         UI.pack();
 
-        // --- generate public/private key pair --- //
+        // --- Generate public/private key pair --- //
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048); //size of RSA key - 2048
         KeyPair pair = keyGen.generateKeyPair();
@@ -85,6 +73,8 @@ public class Client {
             new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
             clientPubKey.getEncoded() //self-signed
         );
+
+        // --- Generate Certificate --- //
         X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
             new X500Name("CN=issuer"), //issuer
             new BigInteger("3874699348568"), //serial no
@@ -107,16 +97,12 @@ public class Client {
                 // --- Compress & Encrypt --- //
                 Message message = new Message(msg,clientPubKey,serverPubKey);
                 Authentication.sign(clientPvtKey,message);
-                // Get compressed concatenated payload and signature components
                 byte[] msgBytes = message.toByteArray();
                 byte[] encryptedMsgBytes;
-
                 try {
                     encryptedMsgBytes = Encryption.encrypt(sharedKey, init_vector, serverPubKey,msgBytes);
-                    //output.writeInt(encryptedMsgBytes.length);
-                    //output.write(encryptedMsgBytes);
+                    // --- Send to Server ---//
                     output.writeObject(encryptedMsgBytes);
-                    System.out.println(Arrays.toString(encryptedMsgBytes));
                 } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IOException | BadPaddingException | IllegalBlockSizeException | InvalidAlgorithmParameterException ex) {
                     ex.printStackTrace();
                     System.out.println("Error Sending Message Object");
@@ -129,6 +115,7 @@ public class Client {
 
     private void run() throws IOException, NoSuchPaddingException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, ClassNotFoundException, InvalidKeySpecException {
         try {
+            // --- Set up Socket and Object Streams --- //
             Socket socket = new Socket(serverAddress, 59002);
             output = new ObjectOutputStream(socket.getOutputStream());
             input = new ObjectInputStream(socket.getInputStream());
@@ -137,10 +124,10 @@ public class Client {
             if (obj instanceof String) {
                 String line = (String) obj;
                 if (line.startsWith("SUBMITNAME")) {
-                    //Send public Key
+                    // --- Send public Key --- //
                     output.writeObject(clientPubKey);
                 }
-
+                // --- Send Certificate --- //
                 line = (String) input.readObject();
                 if (line.startsWith("SENDCERT")) {
                     output.writeObject(clientCert);
@@ -148,11 +135,13 @@ public class Client {
                 line = (String) input.readObject();
                 if (line.startsWith("NAMEACCEPTED")) {
                     this.UI.setTitle("Encrypto - Client");
+
+                    // --- Authenticate Server --- //
                     serverPubKey = (PublicKey) input.readObject();
                     X509CertificateHolder servCert = (X509CertificateHolder) input.readObject();
                     boolean authenticate = true;
-                    // --- Authenticate Server --- //
                     authenticate = Authentication.authenticateSender(servCert);
+                    // --- Accept --- //
                     if (authenticate) {
                         output.writeObject("accepted");
 
@@ -165,7 +154,9 @@ public class Client {
 
                         msgField.append("Joined chat with Server\n");
                         txtEnter.setEditable(true);
-                    } else {
+                    }
+                    // --- Decline --- //
+                    else {
                         output.writeObject("declined");
                         msgField.append("Server identity unknown, closing services...\n");
                         try {
@@ -183,39 +174,34 @@ public class Client {
                     }
                 }
             }
+            // --- Loop receiving Messages from Server --- //
             while (true) {
-                    //int n = input.readInt();
-                    //byte[] msg = new byte[n];
-                    //input.readFully(msg);
+                    // --- Get Message --- //
                     byte [] msg = (byte[]) input.readObject();
-                    //String encryptedMessage = new String(msg);
                     msgField.append("Server encrypted: " + msg + "\n");
 
-                    // --- Decompression & Decryption --- //
+                    // --- Decryption & Decompression --- //
                     byte[] dcMsg = Encryption.decrypt(clientPvtKey, msg);
-
                     String decompMsg = Encryption.decompress(dcMsg);
                     System.out.printf("Final Decompressed Message: %s", decompMsg);
 
-                    Message newMsg = new Message(decompMsg);
-
                     // --- Authenticate Message --- //
+                    Message newMsg = new Message(decompMsg);
                     if (Authentication.authenticateMessage(newMsg)){
                         msgField.append("Server decrypted: " + newMsg.payload.plaintext + "\n");
                     }
                     else {
                         msgField.append("Message Authentication failed");
                     }
-
-
             }
+        // --- Close Client Window --- //
         } finally {
             UI.setVisible(false);
             UI.dispose();
         }
     }
 
-
+        // --- Start Client --- //
         public static void main(String[] args) throws Exception {
             Client client;
             if (args.length == 1) {
@@ -228,7 +214,5 @@ public class Client {
             client.UI.setVisible(true);
             client.run();
         }
-
-
 
     }

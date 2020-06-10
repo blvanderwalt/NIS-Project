@@ -9,25 +9,12 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.*;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Scanner;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.awt.BorderLayout;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+
 //for certificate
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.X509CertificateHolder;
@@ -46,10 +33,6 @@ public class Server {
     private static PublicKey clientPubKey;
     private static SecretKey sharedKey;
     public static byte[] init_vector;
-    public static IvParameterSpec ivspec;
-
-
-    private X509CertificateHolder clientCert;
     private static X509CertificateHolder serverCert; //B
 
     private static ObjectOutputStream defaultStream;
@@ -62,6 +45,7 @@ public class Server {
         serverClient = new ServerClient(defaultStream);
         ExecutorService pool = Executors.newFixedThreadPool(500);
 
+        // --- Generate public/private key pair --- //
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048); //size of RSA key - 2048
         KeyPair pair = keyGen.generateKeyPair();
@@ -73,6 +57,8 @@ public class Server {
                 new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
                 serverPubKey.getEncoded()
         );
+
+        // --- Generate Certificate --- //
         X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
                 new X500Name("CN=issuer"), //issuer
                 new BigInteger("3874699348569"), //serial no
@@ -94,11 +80,10 @@ public class Server {
         }
     }
 
+    // --- Thread to receive client input --- //
     private static class Handler implements Runnable {
         private Socket socket;
         private ObjectInputStream in;
-
-
 
         public Handler(Socket socket) {
             this.socket = socket;
@@ -109,7 +94,7 @@ public class Server {
                 ObjectOutputStream prt = new ObjectOutputStream(socket.getOutputStream());
                 in = new ObjectInputStream(socket.getInputStream());
 
-                // Keep requesting a name until we get a unique one.
+                // Keep requesting a name until we get a unique one
                 while (true) {
                     prt.writeObject("SUBMITNAME");
                     PublicKey cPubKey = (PublicKey)in.readObject();
@@ -123,8 +108,9 @@ public class Server {
                         break;
                     }
                 }
+
                 // --- Authentication --- //
-                //Get certificate and verify
+                // --- Get certificate and verify --- //
                 clientWriter.writeObject("SENDCERT");
                 X509CertificateHolder clientCert = (X509CertificateHolder) in.readObject();
                 if (!Authentication.authenticateSender(clientCert)) {
@@ -132,7 +118,7 @@ public class Server {
                     clientWriter.writeObject("DECLINED");
                     return;
                 }
-                //Send Public key to client and await their verification
+                // --- Send Public key to client and await their verification --- //
                 clientWriter.writeObject("NAMEACCEPTED");
                 clientWriter.writeObject(serverPubKey);
                 clientWriter.writeObject(serverCert);
@@ -166,18 +152,17 @@ public class Server {
                 serverClient.txtEnter.setEditable(true);
 
 
-                // --- Read messages from client --- //
+                // --- Loop Reading messages from client --- //
                 while (true) {
-                    //int n = in.readInt();
-                    //byte[] input = new byte[n];
-                   // in.readFully(input);
+                    // --- Get message --- //
                     byte [] input = (byte[]) in.readObject();
                     serverClient.msgField.append("Client encrypted: " + input + "\n");
+
                     // --- Decrypt & Decompress input --- //
                     byte[] dcMsg = Encryption.decrypt(serverPvtKey, input);
-
                     String decmpMsg = Encryption.decompress(dcMsg);
                     System.out.printf("Final Decompressed Message: %s", decmpMsg);
+
 
                     Message msg = new Message(decmpMsg);
                     if (msg.payload.plaintext.startsWith("/quit")) {
@@ -185,14 +170,14 @@ public class Server {
                         System.out.println("Bye Bye");
                         return;
                     }
+
+                    // --- Authenticate Message --- //
                     if (Authentication.authenticateMessage(msg)){
                         serverClient.msgField.append("Client decrypted: " + msg.payload.plaintext + "\n");
                     }
                     else {
                         serverClient.msgField.append("Message Authentication failed");
                     }
-
-
                 }
             } catch (Exception e) {
                 e.printStackTrace();
