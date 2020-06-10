@@ -98,8 +98,11 @@ public class Message{
 
         index -= 296;
         byte[] keyBytes = new byte[294];
-        System.arraycopy(fullMessage,index,keyBytes,0,294);
-        signature.senderPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(keyBytes));
+        try{
+            System.arraycopy(fullMessage,index,keyBytes,0,294);
+            signature.senderPublicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(keyBytes));
+        }
+        catch (InvalidKeySpecException e) {}
 
         index -= 8;
         assert index==0;
