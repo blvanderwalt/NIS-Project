@@ -11,8 +11,6 @@ import org.bouncycastle.cert.X509CertificateHolder;
 import java.util.Date;
 
 public class Authentication {
-    private static int MESSAGE_DIGEST_SIZE = 256; //bits
-    private static int PUBLIC_KEY_SIZE = 3136; //bits
 
     /**
      * digitally signs the input message
