@@ -55,6 +55,34 @@ public class Test {
             String message = new String(final_message);
             System.out.printf("Message: %s\n", message);
             System.out.println("================================================");
+            // --- Test Authentication --- //
+            System.out.println("// --- Test Authentication --- //");
+            System.out.println("...Authenticating Sender");
+            SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
+               new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
+               publicKey.getEncoded()
+            );
+            X509v3CertificateBuilder certBuild = new X509v3CertificateBuilder(
+               new X500Name("CN=issuer"), //issuer
+               new BigInteger("3874699348568"), //serial no
+               new GregorianCalendar(2020,4,1).getTime(), //issue date
+               new GregorianCalendar(2020,8,31).getTime(), //expiry date
+               Locale.getDefault(), //date locale
+               new X500Name("CN=subject"), //subject
+               subjectPubKeyInfo //subjects public key info: algorithm and public key
+           );
+           X509CertificateHolder cert = certBuild.build(
+               new OurSigner(subjectPubKeyInfo.getAlgorithm(), publicKey.getEncoded())
+           );
+
+           Authentication.authenticateSender(cert);
+           System.out.println("= = = = = = = = = = = = = = = = = = =");
+           
+           System.out.println("...Authenticating Message");
+           Message m2 = new Message("a plaintext message",publicKey,publicKey);
+           Authentication.sign(privateKey,m2);
+           Authentication.authenticateMessage(m2);
+           System.out.println("================================================");
         }catch(Exception ex){
             ex.printStackTrace();
         }
