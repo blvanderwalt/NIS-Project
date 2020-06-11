@@ -66,12 +66,12 @@ public class Encryption {
 
         Cipher cipherRSA = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         cipherRSA.init(Cipher.ENCRYPT_MODE, publicKey);
-        System.out.printf("Size of unencrypted shared key: %d\n", secretKey.getEncoded().length);
+//        System.out.printf("Size of unencrypted shared key: %d\n", secretKey.getEncoded().length);
         byte[] bytes_sharedKey = cipherRSA.doFinal(secretKey.getEncoded());
-        System.out.printf("Size of encrypted shared key: %d\n", bytes_sharedKey.length);
+//        System.out.printf("Size of encrypted shared key: %d\n", bytes_sharedKey.length);
 
         byteOut.write(bytes_sharedKey);
-        System.out.printf("Size of init_vector: %d\n", init_vect.length);
+//        System.out.printf("Size of init_vector: %d\n", init_vect.length);
         byteOut.write(init_vect);
 
         // Encrypt File content using AES key
@@ -97,8 +97,8 @@ public class Encryption {
         byte[] encryptedPackage = new byte[byteOut.size()];
         encryptedPackage = byteOut.toByteArray();
 
-        System.out.printf("Size of unencrypted msg: %d\n", message.length);
-        System.out.printf("Size of encrypted msg: %d\n", encryptedPackage.length);
+//        System.out.printf("Size of unencrypted msg: %d\n", message.length);
+//        System.out.printf("Size of encrypted msg: %d\n", encryptedPackage.length);
 
         return encryptedPackage;
     }
@@ -117,14 +117,12 @@ public class Encryption {
         byte[] shared_key = cipherRSA.doFinal(ENshared_key); //retrieves secret AES key
         SecretKey originalKey = new SecretKeySpec(shared_key, 0, shared_key.length, "AES");
 
-
         byte[] iv = new byte[128/8];
         bIn.read(iv);
         IvParameterSpec ivspec = new IvParameterSpec(iv);
 
         Cipher cipherAES = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipherAES.init(Cipher.DECRYPT_MODE, originalKey, ivspec);
-
 
         ByteArrayOutputStream bOut = new ByteArrayOutputStream();
         byte[] input_buffer = new byte[1024];
