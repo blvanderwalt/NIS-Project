@@ -8,6 +8,10 @@ Run requires 2 consoles, running the server first and then the client (See end f
 To Start Server --> java Server
 To Start Client --> java Client [ip]
 (ip is optional - used if run on separate devices)
+--- These commands are done assuming bouncycastle is linked to the runtime,
+    that the files have been compiled in the same folder,
+    and that they are being done in a console in the src files.
+    -> use makefile for easier usage
 
 To send messages, type the message on either client side and press enter.
 /quit to quit client
