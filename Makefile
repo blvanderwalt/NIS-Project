@@ -55,6 +55,10 @@ server: ${BINDIR}/Server.class
 client: ${BINDIR}/Client.class
 	java -classpath ${CLASSPATH}/ Client
 	
+#Run Test
+test: ${BINDIR}/Test.class
+	java -classpath ${CLASSPATH}/ Test
+	
 	
 # Deletes all project class files, in bin
 clean:

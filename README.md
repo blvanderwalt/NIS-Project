@@ -25,5 +25,7 @@ make server
     - runs the server
 make client
     - runs client connecting to local host
+  make test
+    - runs the tests on the methods 
 
 // ------------------------------------------------------------------------- //

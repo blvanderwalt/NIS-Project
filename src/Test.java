@@ -6,13 +6,22 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import java.security.*;
 import java.util.Arrays;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.x509.X509CertificateStructure;
+import java.math.BigInteger;
+import java.util.GregorianCalendar;
+import java.util.Locale;
 
 public class Test {
 
     public static void main(String [] args){
-
+        System.out.println("\n\n// --- Starting tests --- //\n");
         // --- Test Compression & Decompression --- //
-        System.out.println("// --- Compression & Decompression --- //");
+        System.out.println("// --- Compression & Decompression --- //\n");
         String test = "Testing Compession and Decompression functions. \nHere we go!";
         System.out.println("original: " + test);
         byte [] zipTest = Encryption.compress(test);
@@ -21,10 +30,10 @@ public class Test {
         String unzipTest = Encryption.decompress(zipTest);
         System.out.println("unzipped: " + unzipTest);
 
-        System.out.println("================================================");
+        System.out.println("================================================\n");
         // --- Test Encryption and Decryption --- //
         try{
-            System.out.println("// --- Test Encryption and Decryption --- //");
+            System.out.println("// --- Test Encryption and Decryption --- //\n");
             String Message = "This is a secret message\nWho do you think sent it?";
             System.out.printf("Unencrypted Message: %s\n", Message);
             System.out.printf("Bytes of Original  Message %s\n", Arrays.toString(Message.getBytes()) );
@@ -54,9 +63,9 @@ public class Test {
 
             String message = new String(final_message);
             System.out.printf("Message: %s\n", message);
-            System.out.println("================================================");
+            System.out.println("================================================\n");
             // --- Test Authentication --- //
-            System.out.println("// --- Test Authentication --- //");
+            System.out.println("// --- Test Authentication --- //\n");
             System.out.println("...Authenticating Sender");
             SubjectPublicKeyInfo subjectPubKeyInfo = new SubjectPublicKeyInfo(
                new AlgorithmIdentifier(X509CertificateStructure.id_RSAES_OAEP),
